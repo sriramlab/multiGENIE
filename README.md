@@ -169,7 +169,11 @@ multi_gxe/          the current algorithm  (v4, this is what you should use)
   simulate.py         synthetic exports, for tests and teaching
 notebooks/
   build_algo_lab.py   generator for the lab notebook
-  algo_lab.ipynb      edit the three knobs, see the effect on real exports
+  algo_lab.ipynb      edit the three knobs, see the effect on real exports,
+                      and five views of the curve the rules act on:
+                      two traits, every rule's cut on one curve, in fold
+                      against out of fold, a panel per trait, and what the
+                      rules buy
 docs/
   algorithm.md        the method in full, including the statistics as implemented
   export_format.md    the JSON schema and how to produce it
