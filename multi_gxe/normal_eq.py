@@ -51,14 +51,26 @@ class Export:
     env_names: List[str]
     full: System
     jackknife: List[System]
+    # Which environments still carry an N x E column.  `None` means all of them,
+    # which is every export as the engine writes it.  `drop_degenerate_nxe` sets it when
+    # a column has been removed for being collinear with the noise kernel, and the
+    # G x E side is deliberately left untouched, so the two sides can differ.
+    nxe_keep: tuple | None = None
 
     @property
     def has_nxe(self) -> bool:
         return self.model == "G+GxE+NxE"
 
     @property
+    def nxe_index(self) -> tuple:
+        """Environment indices carrying an N x E column, in column order."""
+        if not self.has_nxe:
+            return ()
+        return tuple(range(self.n_env)) if self.nxe_keep is None else self.nxe_keep
+
+    @property
     def dim(self) -> int:
-        return 1 + self.n_env + (self.n_env if self.has_nxe else 0) + 1
+        return 1 + self.n_env + len(self.nxe_index) + 1
 
     @property
     def n_jack(self) -> int:
@@ -126,10 +138,13 @@ def drop_envs(export: Export, names: Sequence[str]) -> Export:
     if not keep:
         raise ValueError("dropping every environment leaves nothing to select over")
     idx = select_indices(export, keep)
+    old = set(export.nxe_index)
+    new_keep = tuple(j for j, i in enumerate(keep) if i in old)
     return Export(model=export.model, n_env=len(keep),
                   env_names=[export.env_names[i] for i in keep],
                   full=slice_system(export.full, idx),
-                  jackknife=[slice_system(j, idx) for j in export.jackknife])
+                  jackknife=[slice_system(j, idx) for j in export.jackknife],
+                  nxe_keep=None if len(new_keep) == len(keep) else new_keep)
 
 
 # --------------------------------------------------------------------- slicing
@@ -142,7 +157,9 @@ def select_indices(export: Export, subset: Sequence[int]) -> List[int]:
     idx = [0]
     idx.extend(1 + int(k) for k in subset)
     if export.has_nxe:
-        idx.extend(1 + export.n_env + int(k) for k in subset)
+        pos = {e: j for j, e in enumerate(export.nxe_index)}
+        idx.extend(1 + export.n_env + pos[int(k)]
+                   for k in subset if int(k) in pos)
     idx.append(export.dim - 1)
     return idx
 
@@ -196,3 +213,59 @@ def jk_se(values: Sequence[float]) -> float:
     if n == 0:
         raise ValueError("no jackknife blocks")
     return float(np.sqrt((n - 1) / n * np.sum((v - v.mean()) ** 2)))
+
+
+# ------------------------------------------------- degenerate N x E columns
+NXE_IDENTITY_COS = 0.99
+
+
+def nxe_identity_cos(export: Export) -> np.ndarray:
+    """Angle of each N x E kernel to the identity, in the trace inner product.
+
+    `x_l[i, j] = tr(K_i K_j)`, and the noise kernel is the identity, so the last
+    column holds `tr(K_i)` and the cosine is `tr(K_i) / sqrt(tr(K_i^2) tr(I))`.
+
+    For a standardised BINARY environment with frequency p this is near one by
+    construction: `diag(e^2) = a^2 I + (b^2 - a^2) diag(x)` with
+    `b^2 - a^2 = (1 - 2p) / (p(1-p))`, so the identifying part vanishes as p
+    approaches one half and a balanced binary environment gives `K_nxe = I`
+    exactly.  Such a column is the noise kernel under another name.
+    """
+    if not export.has_nxe:
+        return np.zeros(0)
+    T = export.full.x_l
+    noise = export.dim - 1
+    cols = [1 + export.n_env + j for j in range(len(export.nxe_index))]
+    return np.array([T[c, noise] / np.sqrt(T[c, c] * T[noise, noise])
+                     for c in cols])
+
+
+def drop_degenerate_nxe(export: Export,
+                        threshold: float = NXE_IDENTITY_COS) -> Export:
+    """Remove N x E columns collinear with the noise kernel; keep their G x E side.
+
+    A column above `threshold` is not identified against the noise term, so the
+    solver splits weight between the two arbitrarily.  On the 42-trait pool that
+    single column drove sum h2_NxE to a worst case of -5.27 with 52% of fits
+    negative; removing it leaves +0.083 with 8% negative and a 13-fold smaller
+    spread, while sum h2_GxE moves by at most 0.0056 on any trait.
+
+    The G x E column is deliberately kept: the environment is still a legitimate
+    candidate for selection, and only its noise-variance term was degenerate.
+    """
+    if not export.has_nxe:
+        return export
+    cos = nxe_identity_cos(export)
+    keep_pos = [j for j, c in enumerate(cos) if c <= threshold]
+    if len(keep_pos) == len(cos):
+        return export
+    if not keep_pos:
+        raise ValueError("every N x E column is collinear with the noise kernel")
+    head = list(range(1 + export.n_env))
+    cols = [1 + export.n_env + j for j in keep_pos]
+    idx = head + cols + [export.dim - 1]
+    return Export(model=export.model, n_env=export.n_env,
+                  env_names=list(export.env_names),
+                  full=slice_system(export.full, idx),
+                  jackknife=[slice_system(j, idx) for j in export.jackknife],
+                  nxe_keep=tuple(export.nxe_index[j] for j in keep_pos))

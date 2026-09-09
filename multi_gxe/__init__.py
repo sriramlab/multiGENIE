@@ -22,7 +22,8 @@ Five stages.  Three of them are knobs, and they are the three you are meant to c
 the engine has run once; `CHANGELOG.md` says what each version changed and why.
 """
 from .normal_eq import (Export, System, load_export, drop_envs, select_indices,
-                        slice_system, solve, component_h2, fit_subset, jk_se)
+                        slice_system, solve, component_h2, fit_subset, jk_se,
+                        nxe_identity_cos, drop_degenerate_nxe, NXE_IDENTITY_COS)
 from .evaluator import Evaluator, curve
 from .cluster import (cluster_from_corr, pairwise_corr, corr_from_env_file,
                       representatives, CUT, LINKAGE)
@@ -37,6 +38,7 @@ __version__ = "4.2.0"
 __all__ = [
     "Export", "System", "load_export", "drop_envs", "select_indices",
     "slice_system", "solve", "component_h2", "fit_subset", "jk_se",
+    "nxe_identity_cos", "drop_degenerate_nxe", "NXE_IDENTITY_COS",
     "Evaluator", "curve",
     "cluster_from_corr", "pairwise_corr", "corr_from_env_file",
     "representatives", "CUT", "LINKAGE",

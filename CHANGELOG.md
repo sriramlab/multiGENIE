@@ -1,5 +1,22 @@
 # Changelog
 
+## Unreleased
+
+### Added
+- `drop_degenerate_nxe`, `nxe_identity_cos` and `NXE_IDENTITY_COS`: remove N x E columns
+  collinear with the noise kernel (cosine to the identity above 0.99) while keeping the
+  environment's G x E column. A balanced binary environment has `K_nxe = I` exactly and is
+  not identified against the noise term. On `lifestyle42` this drops one column of 42 and
+  takes sum `h2_NxE` from mean -0.1887, sd 0.8954, 52% negative, worst -5.27 to mean
+  +0.0831, sd 0.0667, 8% negative, worst -0.100. Sum `h2_GxE` moves 1.2419 -> 1.2225.
+- `Export.nxe_keep` / `Export.nxe_index`: the G x E and N x E sides may now differ in
+  length. `None` means every environment carries an N x E column, as the engine writes it.
+
+### Not done
+- The tables and figures in `RESULTS.md` sections 1-4 predate the fix and still use the
+  1.2419 denominator.
+
+
 Versions here are versions of the **algorithm**. Each entry says what changed, what
 it was measured on, and what was tried and rejected at the same time. The long form
 is in `docs/versions/`; the code of every earlier version is frozen under `legacy/`.

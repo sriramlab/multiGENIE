@@ -63,3 +63,59 @@ def test_singular_slice_raises_rather_than_least_squaring(export):
     bad = mg.System(x_l=np.zeros((3, 3)), y_r=np.ones(3))
     with pytest.raises(ValueError, match="singular"):
         mg.solve(bad)
+
+
+# ------------------------------------------------- degenerate N x E columns
+def test_nxe_identity_cos_flags_a_pure_identity_column():
+    """A column equal to the noise kernel has cosine one; a deviation column does not."""
+    import numpy as np
+    from multi_gxe import (Export, System, nxe_identity_cos,
+                           drop_degenerate_nxe, select_indices, fit_subset)
+    L, N = 3, 1000.0
+    # trace inner products: kernel 0 is G, then 3 GxE, then 3 NxE, then noise.
+    # Every kernel has tr(K_i) = N (the last column) but an ordinary one has
+    # tr(K_i^2) = 3N, giving cos = N / sqrt(3N * N) = 0.577.  The identity has
+    # tr(K^2) = N, giving cos = 1 exactly.
+    D = 1 + L + L + 1
+    T = np.eye(D) * (3.0 * N)
+    T[-1, -1] = N
+    T[:, -1] = T[-1, :] = N            # tr(K_i) = N for every kernel
+    # NxE column 1 IS the identity: its row equals the noise row exactly.
+    T[1 + L + 1, :] = T[-1, :]
+    T[:, 1 + L + 1] = T[:, -1]
+    ex = Export(model="G+GxE+NxE", n_env=L, env_names=["a", "b", "c"],
+                full=System(x_l=T, y_r=np.ones(D)), jackknife=[])
+    cos = nxe_identity_cos(ex)
+    assert cos.shape == (L,)
+    assert cos[1] == pytest.approx(1.0)
+    assert cos[0] < 0.99 and cos[2] < 0.99
+
+    pruned = drop_degenerate_nxe(ex)
+    assert pruned.nxe_index == (0, 2)          # env 1 keeps its GxE, loses its NxE
+    assert pruned.n_env == L                   # the GxE side is untouched
+    assert pruned.dim == 1 + L + 2 + 1
+    assert pruned.full.x_l.shape == (pruned.dim, pruned.dim)
+
+
+def test_select_indices_skips_a_dropped_nxe_column():
+    """A subset containing the degenerate environment still builds a square system."""
+    import numpy as np
+    from multi_gxe import Export, System, select_indices
+    L = 3
+    D = 1 + L + 2 + 1
+    ex = Export(model="G+GxE+NxE", n_env=L, env_names=["a", "b", "c"],
+                full=System(x_l=np.eye(D), y_r=np.ones(D)), jackknife=[],
+                nxe_keep=(0, 2))
+    # env 1 has no NxE column, so the subset {1} yields G + GxE_1 + noise only
+    assert select_indices(ex, [1]) == [0, 2, D - 1]
+    # subset {0, 1} picks up NxE for env 0 alone
+    assert select_indices(ex, [0, 1]) == [0, 1, 2, 1 + L, D - 1]
+
+
+def test_drop_degenerate_nxe_is_a_noop_without_nxe():
+    import numpy as np
+    from multi_gxe import Export, System, drop_degenerate_nxe
+    D = 1 + 2 + 1
+    ex = Export(model="G+GxE", n_env=2, env_names=["a", "b"],
+                full=System(x_l=np.eye(D), y_r=np.ones(D)), jackknife=[])
+    assert drop_degenerate_nxe(ex) is ex
