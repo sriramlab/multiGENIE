@@ -1,0 +1,20 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+*.egg-info/
+build/
+dist/
+.ipynb_checkpoints/
+
+# nothing derived from individual-level data belongs in this repository
+*.normal_eq.json
+*.env
+*.pheno
+*.covar
+*.bed
+*.bim
+*.fam
+*.npz
+results/
+figures/
+data/
