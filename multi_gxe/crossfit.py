@@ -10,23 +10,23 @@ THE FIX.  Split the individuals into two halves, A and B, respecting family and
 ancestry structure so the halves are genuinely independent.  Run the engine once per
 half, so each has its own exported system.  Then:
 
-    direction A->B :  grow the path on A (full depth, no gate)
-                      draw the curve on B, cut it, report B's number
+    direction A->B :  choose representatives on A, grow the path on A (full depth,
+                      no gate), draw the curve on B, cut it, report B's number
     direction B->A :  the same the other way
 
-Each direction is fully out of fold: the set comes from one half, the number from
-the other.  Combine by MIN.
+Each direction is fully out of fold: everything that touches the selection -- the
+representatives, the path, the cut -- comes from one half, and the number comes from
+the other.  Combine the two with `combine=`.
 
-WHY MIN.  The minimum of the two estimates requires BOTH halves to name something
-before anything is reported, so a rule whose per-direction null rate is `alpha`
-gives a combined null rate of `alpha^2`.  That is where the calibration comes from
--- not from a permutation array.  AVG is the alternative and is not the same claim:
-it recovers more, but most of the extra comes from traits only one half could see.
+THREE THINGS YOU CAN CHANGE, and nothing else has to move:
+
+    choose=    which environment represents a block      multi_gxe/represent.py
+    rule=      where to stop along the grown path        multi_gxe/stopping.py
+    combine=   what gets reported from the two halves    multi_gxe/combine.py
 
 WHAT YOU GIVE UP.  Two engine fits on half samples instead of one on the whole, and
 every estimate is a half-sample estimate.  The two directions may name different
-sets; the reported set is the one belonging to the reported (minimum) estimate, and
-`shared` says how much the two agree.
+sets; `shared` says how far they agree.
 """
 from __future__ import annotations
 
@@ -35,6 +35,8 @@ from typing import Any, Dict, List, Optional, Sequence
 
 import numpy as np
 
+from . import combine as combiners
+from . import represent
 from .evaluator import Evaluator, curve
 from .grow import grow_path
 from .normal_eq import Export
@@ -43,7 +45,7 @@ from .stopping import Curve, StopRule, plateau, report
 
 @dataclass
 class Direction:
-    """One direction: grown on one export, scored on the other."""
+    """One direction: everything chosen on one export, the number from the other."""
     k: int
     tau: float
     se: float
@@ -51,16 +53,22 @@ class Direction:
     blocks: List[int]
     path: List[int]
     tau_full: float
+    reps: Optional[List[int]] = None
     curve: Curve = field(repr=False, default=None)
 
 
 def direction(export_grow: Export, export_eval: Export,
               blocks: Sequence[Sequence[int]], *,
-              rule: Optional[StopRule] = None, order: str = "theta",
-              reps: Optional[Sequence[int]] = None,
+              rule: Optional[StopRule] = None,
+              choose=None, corr: Optional[np.ndarray] = None,
+              order: str = "theta",
               ev_grow: Optional[Evaluator] = None,
               ev_eval: Optional[Evaluator] = None) -> Direction:
     """Grow on `export_grow`, cut the curve drawn on `export_eval`.
+
+    `choose` picks one representative environment per block and is evaluated
+    HERE, against the growth half, so a data-driven chooser cannot leak the
+    evaluating half into the selection.  `None` scores the whole block.
 
     The grow runs to FULL DEPTH with no stopping test of its own.  All the
     stopping happens on the held-out half, where it is honest.
@@ -68,6 +76,11 @@ def direction(export_grow: Export, export_eval: Export,
     rule = rule or plateau()
     evg = ev_grow or Evaluator(export_grow)
     eve = ev_eval or Evaluator(export_eval)
+
+    blocks = [list(b) for b in blocks]
+    reps = represent.resolve(
+        choose, blocks,
+        represent.RepContext(blocks=blocks, corr=corr, ev=evg, export=export_grow))
 
     grown = grow_path(evg, blocks, order=order, reps=reps)
     path = grown["path"]
@@ -79,53 +92,42 @@ def direction(export_grow: Export, export_eval: Export,
     rec = report(cv, rule(cv))
     return Direction(k=rec["k"], tau=rec["tau"], se=rec["se"], z=rec["z"],
                      blocks=rec["blocks"], path=[int(b) for b in path],
-                     tau_full=float(c[-1]), curve=cv)
+                     tau_full=float(c[-1]), reps=reps, curve=cv)
 
 
 def crossfit(export_A: Export, export_B: Export,
              blocks: Sequence[Sequence[int]], *,
-             rule: Optional[StopRule] = None, combine: str = "min",
-             order: str = "theta",
-             reps: Optional[Sequence[int]] = None) -> Dict[str, Any]:
+             rule: Optional[StopRule] = None,
+             choose=None, corr: Optional[np.ndarray] = None,
+             combine="min", order: str = "theta",
+             ev_A: Optional[Evaluator] = None,
+             ev_B: Optional[Evaluator] = None) -> Dict[str, Any]:
     """Both directions, combined.  This is the algorithm.
 
-    `combine`:
-      * `min` -- report the smaller estimate and its set; names something only if
-        BOTH directions do, which squares the null rate.  The default.
-      * `avg` -- report the average of the two estimates; names something if
-        EITHER direction does, so the null rate is not squared.
-      * `A` / `B` -- one direction only, for diagnostics.
+    `combine` is a name (`min`, `avg`, `A`, `B`, `agreed`) or any callable
+    `(dir_A, dir_B) -> dict`; see `multi_gxe/combine.py`.
 
-    Returns the estimate `tau`, its jackknife SE and z, the reported blocks, the
-    per-direction cut sizes, how many blocks the two directions agree on, and
-    `tau_full`, the average full-depth out-of-fold total, which is the natural
-    denominator for "how much of the available signal did selection keep".
+    Returns the reported estimate `tau`, its jackknife standard error and z, the
+    named blocks, whether the trait was named at all, the per-direction cut sizes,
+    how many blocks the two directions agree on, and `tau_full` -- the average
+    full-depth out-of-fold total, which is the natural denominator for "how much
+    of the available signal did selection keep".
+
+    Pass `ev_A` / `ev_B` to reuse memoised evaluators across configurations.  The
+    memo is keyed on the admitted SET, so two rules that visit the same prefixes
+    re-solve nothing -- which is what makes sweeping knobs interactive.
     """
-    if combine not in ("min", "avg", "A", "B"):
-        raise ValueError(f"combine must be min/avg/A/B; got {combine!r}")
     rule = rule or plateau()
-    a = direction(export_A, export_B, blocks, rule=rule, order=order, reps=reps)
-    b = direction(export_B, export_A, blocks, rule=rule, order=order, reps=reps)
+    fn = combiners.resolve(combine)
+    kw = dict(rule=rule, choose=choose, corr=corr, order=order)
+    a = direction(export_A, export_B, blocks, ev_grow=ev_A, ev_eval=ev_B, **kw)
+    b = direction(export_B, export_A, blocks, ev_grow=ev_B, ev_eval=ev_A, **kw)
 
-    if combine == "A":
-        pick, names = a, a.k > 0
-    elif combine == "B":
-        pick, names = b, b.k > 0
-    elif combine == "min":
-        pick = a if a.tau <= b.tau else b
-        names = (a.k > 0) and (b.k > 0)
-    else:
-        pick = a if a.tau <= b.tau else b     # set reporting still needs one path
-        names = (a.k > 0) or (b.k > 0)
-
-    tau = 0.5 * (a.tau + b.tau) if combine == "avg" else pick.tau
-    se = (0.5 * float(np.hypot(a.se, b.se))) if combine == "avg" else pick.se
-    return dict(tau=float(tau), se=float(se),
-                z=float(tau / se) if se > 0 else np.nan,
-                k=int(pick.k), blocks=list(pick.blocks),
-                names=bool(names), combine=combine,
-                k_A=int(a.k), k_B=int(b.k),
-                shared=len(set(a.blocks) & set(b.blocks)),
-                tau_A=float(a.tau), tau_B=float(b.tau),
-                tau_full=float(0.5 * (a.tau_full + b.tau_full)),
-                direction_A=a, direction_B=b)
+    out = dict(fn(a, b))
+    out.update(combine=combiners.name_of(fn), represent=represent.name_of(choose),
+               k_A=int(a.k), k_B=int(b.k),
+               shared=len(set(a.blocks) & set(b.blocks)),
+               tau_A=float(a.tau), tau_B=float(b.tau),
+               tau_full=float(0.5 * (a.tau_full + b.tau_full)),
+               direction_A=a, direction_B=b)
+    return out

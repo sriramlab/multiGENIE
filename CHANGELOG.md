@@ -8,6 +8,32 @@ Dates are when the change was adopted.
 
 ---
 
+## 4.1.0 — 2026-09-09 — the representative and the report become knobs too
+
+**Added**
+- `multi_gxe/represent.py` — stage 1b, picking one candidate environment per block
+  before the path is grown. A chooser is `(blocks, ctx) -> list[int]`; built in are
+  `none` (score the whole block, the default), `centroid`, `marginal`, `first` and
+  `fixed`. **`crossfit` runs the chooser once per direction against the growth
+  half**, so a data-driven choice cannot leak the evaluating half into the selection.
+- `multi_gxe/combine.py` — stage 4 as a function `(dir_A, dir_B) -> dict`, deciding
+  separately whether a trait is named, what number is reported and which set. Built
+  in are `min`, `avg`, `A`, `B` and `agreed` (the old hard intersection).
+- `notebooks/algo_lab.ipynb` and its generator: the three knobs in one editable cell,
+  with sweeps, per-trait curves showing where the rule stopped, and stubs for writing
+  your own chooser, rule and combiner.
+- `crossfit(..., ev_A=, ev_B=)` to reuse memoised evaluators across configurations,
+  which is what makes sweeping knobs interactive.
+
+**Measured on the real pool** (42 traits, fold-matched denominator 1.2419)
+- The representative choice barely matters: 27.5% of the full fit scoring whole
+  blocks, 28.5% with the correlation medoid or the frozen production
+  representatives, the same 8 traits named either way.
+- The combiner matters a lot: `min` 8 traits and 27.5%, `avg` 24 traits and 47%, a
+  single direction 16 traits and 44-50% — but only `min` has the squared null rate.
+
+---
+
 ## 4.0.0 — 2026-09-08 — cross-fitted, with a pluggable cut
 
 *Current. `multi_gxe/`, documented in `docs/versions/v4_crossfit.md`.*

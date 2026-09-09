@@ -7,12 +7,16 @@
     blocks       = cluster_from_corr(corr, cut=0.8)
     result       = crossfit(export_A, export_B, blocks, rule=one_se(2.0))
 
-Four stages, and only the third is a matter of taste:
+Five stages.  Three of them are knobs, and they are the three you are meant to change:
 
-    1  cluster   group the environments from E alone            cluster.py
-    2  grow      full-depth greedy path over the blocks         grow.py
-    3  cut       how many leading blocks to keep                stopping.py
-    4  report    the estimate, out of fold, both directions     crossfit.py
+    1   cluster    group the environments from E alone           cluster.py
+    1b  choose     one candidate environment per block  <- knob  represent.py
+    2   grow       full-depth greedy path over the blocks        grow.py
+    3   cut        how many leading blocks to keep      <- knob  stopping.py
+    4   report     what the two half-sample directions
+                   turn into one result                 <- knob  combine.py
+
+    crossfit(export_A, export_B, blocks, choose=..., rule=..., combine=...)
 
 `docs/algorithm.md` derives the identity that makes stages 2 and 3 cost nothing once
 the engine has run once; `CHANGELOG.md` says what each version changed and why.
@@ -26,9 +30,9 @@ from .grow import grow_path, path_curve, envs_of
 from .stopping import (Curve, StopRule, plateau, one_se, window, gate, argmax,
                        fixed_k, nothing, everything, report, PANEL)
 from .crossfit import crossfit, direction, Direction
-from . import simulate
+from . import simulate, represent, combine
 
-__version__ = "4.0.0"
+__version__ = "4.1.0"
 
 __all__ = [
     "Export", "System", "load_export", "drop_envs", "select_indices",
@@ -39,5 +43,6 @@ __all__ = [
     "grow_path", "path_curve", "envs_of",
     "Curve", "StopRule", "plateau", "one_se", "window", "gate", "argmax",
     "fixed_k", "nothing", "everything", "report", "PANEL",
-    "crossfit", "direction", "Direction", "simulate", "__version__",
+    "crossfit", "direction", "Direction", "simulate", "represent", "combine",
+    "__version__",
 ]

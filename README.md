@@ -45,14 +45,23 @@ Run the engine once with all `L` environments, export that system for the full s
 and for each jackknife block, and every subset fit — with delete-one standard errors
 — becomes free. One fit buys the whole search.
 
-## The four stages
+## The five stages, three of which are knobs
 
 | | stage | what | file |
 |---|---|---|---|
 | 1 | **cluster** | group the environments from `E` alone, average linkage on `1 - abs(r)` cut at 0.8. Never sees the phenotype, so the partition is a property of the design | `multi_gxe/cluster.py` |
+| 1b | **choose** | one candidate environment per block, picked on the growth half. `none()` scores the whole block instead | `multi_gxe/represent.py` |
 | 2 | **grow** | full-depth greedy path over the blocks, ordered by summed `h2_GxE`. No stopping test | `multi_gxe/grow.py` |
 | 3 | **cut** | how many leading blocks to keep. A pure function `Curve -> int` | `multi_gxe/stopping.py` |
-| 4 | **report** | the estimate on the half the path was not grown on, both directions, combined by MIN | `multi_gxe/crossfit.py` |
+| 4 | **report** | what the two half-sample directions turn into one result. A function `(dir_A, dir_B) -> dict` | `multi_gxe/combine.py` |
+
+```python
+mg.crossfit(export_A, export_B, blocks, choose=..., rule=..., combine=...)
+```
+
+Those three arguments are the whole interface for changing the method. Each accepts a
+built-in or any callable of your own, and `notebooks/algo_lab.ipynb` is where you edit
+them against real exports and read the difference.
 
 The grow is exhaustive and the cut only truncates it, so **one traversal scores every
 stopping rule at every threshold**. That is what makes rule design cheap enough to do
@@ -107,6 +116,15 @@ result = mg.crossfit(export_A, export_B, blocks, rule=mg.plateau(1.645))
 result["tau"], result["se"], result["blocks"], result["names"]
 ```
 
+The three knobs, and what each may look at:
+
+```python
+mg.crossfit(A, B, blocks,
+            choose=mg.represent.marginal(),   # (blocks, ctx) -> one env per block
+            rule=mg.one_se(2.0),              # Curve -> int
+            combine=mg.combine.average())     # (dir_A, dir_B) -> dict
+```
+
 Writing your own stopping rule is the intended extension point:
 
 ```python
@@ -146,12 +164,17 @@ multi_gxe/          the current algorithm  (v4, this is what you should use)
   grow.py             stage 2
   stopping.py         stage 3, and the rules measured so far
   crossfit.py         stage 4, the estimator
+  represent.py        stage 1b, the representative choosers
+  combine.py          stage 4, how the two directions are reported
   simulate.py         synthetic exports, for tests and teaching
+notebooks/
+  build_algo_lab.py   generator for the lab notebook
+  algo_lab.ipynb      edit the three knobs, see the effect on real exports
 docs/
   algorithm.md        the method in full, including the statistics as implemented
   export_format.md    the JSON schema and how to produce it
   versions/           one document per version: what changed, and what it was measured on
-tests/              27 tests, including equivalence against the frozen implementations
+tests/              36 tests, including equivalence against the frozen implementations
 examples/           quickstart
 legacy/             every earlier version, frozen, kept to reproduce published numbers
 CHANGELOG.md        the version history in one page
@@ -193,5 +216,5 @@ were produced.
 Python 3.9 or newer, `numpy` and `scipy`. `pytest` to run the tests.
 
 ```bash
-python -m pytest tests -q       # 27 passed
+python -m pytest tests -q       # 36 passed
 ```

@@ -66,6 +66,29 @@ Why blocks rather than environments:
   *summed* G x E, so within-block correlation is absorbed rather than modelled, and a
   singleton block reduces exactly to the single-environment test.
 
+## 3b. Stage 1b — one candidate environment per block
+
+A block of near-duplicates has to be scored somehow, and there are two answers.
+
+* **Score the whole block** (`choose=None`, the default). The round statistic is the
+  block's summed G x E with a jackknife of the sum. Nothing is discarded.
+* **Score one representative** (`multi_gxe/represent.py`). The ranking is done on one
+  column; the block is still FITTED whole once admitted, so the reported number
+  covers every member.
+
+Built-in choosers: `none`, `centroid` (medoid on `abs(r)`, design-only),
+`marginal` (largest marginal `h2_GxE` on the growth half), `first`, `fixed`. A
+chooser is `(blocks, ctx) -> list[int]`, so writing another is a few lines.
+
+**The rule that makes this safe: choose on the growth half only.** `crossfit` runs
+the chooser once per direction, against the growing fold's evaluator. A chooser that
+reads the evaluating half puts held-out data into the selection and the estimate
+stops being out of fold. This is the same failure that made a "global" representative
+a leak in v3.
+
+Measured on the real pool: a Gram-matrix representative induces the same partition as
+the correlation one, and the selected sets do not move. It is a knob, not a lever.
+
 ## 4. Stage 2 — the grow
 
 Each round scores every block not yet admitted, jointly with everything already
@@ -131,6 +154,13 @@ other. The reported set is the path of whichever direction gave the minimum, and
 per-direction null rate `alpha` becomes `alpha²`. The calibration is structural, not
 tuned. `combine="avg"` is the alternative and is a different claim: it recovers more,
 but most of the extra comes from traits only one half could see.
+
+The combining step is itself pluggable (`multi_gxe/combine.py`): a combiner is
+`(dir_A, dir_B) -> dict` and decides three separate things — whether the trait is
+named at all, what number is reported, and which set is named. Built in are `min`,
+`avg`, `A`, `B` and `agreed` (the old hard intersection, kept because it is the
+conservative extreme). Any combiner that names on EITHER direction gives up the
+squared null rate and has to earn its calibration some other way.
 
 **What it costs.** Two engine fits on half samples instead of one on the whole, and
 every estimate is a half-sample estimate with the standard error that implies. The
