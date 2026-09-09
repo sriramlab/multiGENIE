@@ -15,6 +15,11 @@ dist/
 *.bim
 *.fam
 *.npz
-results/
-figures/
 data/
+
+# results and figures are excluded by default; the curated set under results/ and
+# figures/ at the repository root is the exception and is tracked deliberately.
+# Nothing here is individual-level: every file is an aggregate over traits,
+# replicates or genome blocks.
+*/results/
+*/figures/

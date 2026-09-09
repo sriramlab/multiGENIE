@@ -154,6 +154,13 @@ selector does not care which:
 `docs/export_format.md` gives the schema, the index layout, and what to check before
 trusting a file.
 
+## Results
+
+`RESULTS.md` is what the algorithm does on real data and which settings are safe to
+report: `one_se(1.6)` or `plateau(0.75)`, both under MIN, both scoring whole blocks.
+The tables behind it are in `results/`, the figures in `figures/`, and everything
+there is an aggregate over traits, replicates or genome blocks.
+
 ## Repository map
 
 ```
@@ -174,6 +181,8 @@ notebooks/
                       two traits, every rule's cut on one curve, in fold
                       against out of fold, a panel per trait, and what the
                       rules buy
+results/            aggregate tables: null calibration, power, real recovery
+figures/            the figures RESULTS.md refers to
 docs/
   algorithm.md        the method in full, including the statistics as implemented
   export_format.md    the JSON schema and how to produce it
