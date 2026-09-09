@@ -124,10 +124,18 @@ Rules implemented, and what each references:
 | rule | stops when | reference |
 |---|---|---|
 | `plateau(z_thr)` | `(c[K] - c[k]) / se < z_thr` | the full-depth endpoint |
+
 | `one_se(n_se)` | `c[k] >= max(c) - n_se * se` | the curve maximum |
 | `window(m, z_thr)` | the next `m` blocks add nothing significant | a local increment |
 | `gate(alpha, patience)` | the in-fold round p fails `patience` times | one block at a time |
 | `argmax()` | at the curve maximum | oracle, biased upward |
+
+Thresholds are **one-sided** normal quantiles, since only a shortfall below the
+reference is evidence against stopping. `z_thr = 1.645` is the one-sided 95th
+percentile, the same number as a two-sided 90% interval, for a per-direction rate of
+0.05; `1.28` is the one-sided 90th, a two-sided 80% interval, for 0.10. Under MIN the
+reported null rate is the square, 0.0025 and 0.010, which is why the looser threshold
+is the better operating point here and would not be in a single-direction analysis.
 
 `se` is always the **paired** jackknife of the difference, `jk_se(j[a] - j[b])`,
 never the sum of two marginal SEs. The two prefixes are fits on the same

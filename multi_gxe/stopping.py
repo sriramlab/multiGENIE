@@ -79,6 +79,14 @@ def plateau(z_thr: float = 1.645) -> StopRule:
 
     `k* = min { k : (c[K] - c[k]) / se(c[K] - c[k]) < z_thr }`.
 
+    **`z_thr` is a ONE-SIDED normal quantile**, because only a shortfall below the
+    plateau is evidence against stopping.  `1.645` is the one-sided 95th percentile,
+    the same number as a two-sided 90% interval, and gives a per-direction rate of
+    0.05; `1.28` is the one-sided 90th, a two-sided 80% interval, and gives 0.10.
+    Under the MIN combiner the reported null rate is the SQUARE of that, so 0.0025
+    and 0.010 respectively -- which is why 1.28 is the better operating point here
+    and would not be in a single-direction analysis.
+
     Self-calibrating, and that is the whole point.  Under the null the out-of-fold
     curve is flat at zero, so the test at `k = 0` already fails and the rule
     returns the EMPTY SET.  Combined by MIN over the two fold directions
