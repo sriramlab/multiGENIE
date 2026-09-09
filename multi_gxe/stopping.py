@@ -31,6 +31,7 @@ class Curve:
     p      (K,)       in-fold round p-value, a MINIMUM over live candidates
     z      (K,)       in-fold round z
     c_in   (K+1,)     in-fold cumulative, monotone and biased upward
+    j_in   (K+1, J)   its jackknife
     """
     c: np.ndarray
     j: np.ndarray
@@ -38,6 +39,7 @@ class Curve:
     p: Optional[np.ndarray] = None
     z: Optional[np.ndarray] = None
     c_in: Optional[np.ndarray] = None
+    j_in: Optional[np.ndarray] = None
 
     @property
     def K(self) -> int:
@@ -55,6 +57,18 @@ class Curve:
 
     def se_at(self, k: int) -> float:
         return jk_se(self.j[k])
+
+    def in_fold(self) -> "Curve":
+        """The same path scored on the half that GREW it.
+
+        Every rule here reads a `Curve`, so handing it this one answers "what
+        would this rule report with no split at all" -- which is the comparison
+        that prices the split.  Never report from it: the set and the number
+        would come from the same individuals.
+        """
+        if self.c_in is None or self.j_in is None:
+            raise ValueError("this Curve carries no in-fold jackknife")
+        return Curve(c=self.c_in, j=self.j_in, path=self.path, p=self.p, z=self.z)
 
 
 StopRule = Callable[[Curve], int]

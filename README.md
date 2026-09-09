@@ -178,7 +178,7 @@ docs/
   algorithm.md        the method in full, including the statistics as implemented
   export_format.md    the JSON schema and how to produce it
   versions/           one document per version: what changed, and what it was measured on
-tests/              36 tests, including equivalence against the frozen implementations
+tests/              40 tests, including equivalence against the frozen implementations
 examples/           quickstart
 legacy/             every earlier version, frozen, kept to reproduce published numbers
 CHANGELOG.md        the version history in one page
@@ -220,5 +220,5 @@ were produced.
 Python 3.9 or newer, `numpy` and `scipy`. `pytest` to run the tests.
 
 ```bash
-python -m pytest tests -q       # 36 passed
+python -m pytest tests -q       # 40 passed
 ```

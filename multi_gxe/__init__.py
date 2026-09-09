@@ -29,10 +29,10 @@ from .cluster import (cluster_from_corr, pairwise_corr, corr_from_env_file,
 from .grow import grow_path, path_curve, envs_of
 from .stopping import (Curve, StopRule, plateau, one_se, window, gate, argmax,
                        fixed_k, nothing, everything, report, PANEL)
-from .crossfit import crossfit, direction, Direction
+from .crossfit import crossfit, direction, recut, Direction
 from . import simulate, represent, combine
 
-__version__ = "4.1.0"
+__version__ = "4.2.0"
 
 __all__ = [
     "Export", "System", "load_export", "drop_envs", "select_indices",
@@ -43,6 +43,6 @@ __all__ = [
     "grow_path", "path_curve", "envs_of",
     "Curve", "StopRule", "plateau", "one_se", "window", "gate", "argmax",
     "fixed_k", "nothing", "everything", "report", "PANEL",
-    "crossfit", "direction", "Direction", "simulate", "represent", "combine",
+    "crossfit", "direction", "recut", "Direction", "simulate", "represent", "combine",
     "__version__",
 ]

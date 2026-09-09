@@ -38,7 +38,7 @@ import numpy as np
 from . import combine as combiners
 from . import represent
 from .evaluator import Evaluator, curve
-from .grow import grow_path
+from .grow import grow_path, path_curve
 from .normal_eq import Export
 from .stopping import Curve, StopRule, plateau, report
 
@@ -85,14 +85,31 @@ def direction(export_grow: Export, export_eval: Export,
     grown = grow_path(evg, blocks, order=order, reps=reps)
     path = grown["path"]
     c, j = curve(eve, [blocks[b] for b in path])
+    c_in, j_in = path_curve(grown)
     cv = Curve(c=c, j=j, path=np.asarray(path, dtype=int),
                p=np.asarray([r["p"] for r in grown["rounds"]], dtype=float),
                z=np.asarray([r["z"] for r in grown["rounds"]], dtype=float),
-               c_in=np.asarray([0.0] + [r["cum"] for r in grown["rounds"]], dtype=float))
+               c_in=c_in, j_in=j_in)
     rec = report(cv, rule(cv))
     return Direction(k=rec["k"], tau=rec["tau"], se=rec["se"], z=rec["z"],
                      blocks=rec["blocks"], path=[int(b) for b in path],
                      tau_full=float(c[-1]), reps=reps, curve=cv)
+
+
+def recut(d: Direction, rule: StopRule) -> Direction:
+    """The same grown path, cut by a different rule.  No refitting, no regrowing.
+
+    The grow depends on the chooser and the growth half; the cut depends only on
+    the curve the grow produced.  So a calibration sweep over many rules pays for
+    ONE traversal per (replicate, chooser) and re-cuts it for the rest -- which is
+    the same argument that makes the exhaustive grow affordable in the first place.
+    """
+    if d.curve is None:
+        raise ValueError("this Direction carries no curve to re-cut")
+    rec = report(d.curve, rule(d.curve))
+    return Direction(k=rec["k"], tau=rec["tau"], se=rec["se"], z=rec["z"],
+                     blocks=rec["blocks"], path=d.path, tau_full=d.tau_full,
+                     reps=d.reps, curve=d.curve)
 
 
 def crossfit(export_A: Export, export_B: Export,

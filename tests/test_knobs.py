@@ -103,3 +103,43 @@ def test_unknown_combiner_name_is_refused(folds):
     A, B, blocks, _ = folds
     with pytest.raises(ValueError, match="unknown combiner"):
         mg.crossfit(A, B, blocks, combine="whatever")
+
+
+def test_recut_matches_a_fresh_direction(folds):
+    """One traversal, many cuts: re-cutting must equal growing again with that rule."""
+    A, B, blocks, corr = folds
+    grown = mg.direction(A, B, blocks, rule=mg.plateau(1.645))
+    for rule in (mg.one_se(2.0), mg.window(3, 1.645), mg.fixed_k(2), mg.argmax()):
+        again = mg.direction(A, B, blocks, rule=rule)
+        got = mg.recut(grown, rule)
+        assert got.k == again.k
+        assert got.tau == pytest.approx(again.tau)
+        assert got.se == pytest.approx(again.se)
+        assert got.blocks == again.blocks
+        assert got.path == again.path
+
+
+def test_recut_needs_a_curve(folds):
+    A, B, blocks, _ = folds
+    bare = mg.Direction(k=0, tau=0.0, se=0.0, z=0.0, blocks=[], path=[], tau_full=0.0)
+    with pytest.raises(ValueError, match="no curve"):
+        mg.recut(bare, mg.plateau())
+
+
+def test_in_fold_curve_is_available_and_biased_upward(folds):
+    """The same path scored on the half that grew it: the comparison, never the report."""
+    A, B, blocks, _ = folds
+    d = mg.direction(A, B, blocks)
+    cin = d.curve.in_fold()
+    assert cin.K == d.curve.K
+    assert cin.j.shape == d.curve.j.shape
+    # grown and scored on one half, the curve cannot fall below its own start
+    assert cin.c.max() >= cin.c[cin.K] - 1e-12
+    # and every rule reads it like any other curve
+    assert 0 <= mg.plateau(1.645)(cin) <= cin.K
+
+
+def test_in_fold_needs_the_jackknife():
+    cv = mg.Curve(c=np.zeros(3), j=np.zeros((3, 10)))
+    with pytest.raises(ValueError, match="in-fold jackknife"):
+        cv.in_fold()

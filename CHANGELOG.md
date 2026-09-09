@@ -8,6 +8,29 @@ Dates are when the change was adopted.
 
 ---
 
+## 4.2.0 — 2026-09-09 — re-cut without regrowing, and a null calibration of every combination
+
+**Added**
+- `mg.recut(direction, rule)` — the same grown path cut by a different rule, no
+  refitting. A sweep over rules costs one traversal per (replicate, chooser).
+- `Curve.in_fold()` — the same path scored on the half that grew it, so any rule can
+  be asked what it would report with no split at all. Never for reporting.
+- Notebook section 7: all 175 knob combinations on 200 null replicates, two
+  false-positive metrics, three figures.
+
+**Measured, truth zero everywhere**
+- MIN lands on the square of a single direction's rate: gate 0.147 -> 0.008,
+  1-SE 1.5 0.134 -> 0.019, 1-SE 2 0.054 -> 0.001. Every practical rule under MIN is
+  at or below 0.02.
+- AVG and single directions exceed 0.05 for every rule; the gate under AVG reaches
+  0.286.
+- The representative choice is inert: 0.187 to 0.193 pooled naming rate across all
+  five choosers.
+- `argmax` names in 97% of null replicates under MIN. It is an upper bound, not a
+  candidate.
+
+---
+
 ## 4.1.0 — 2026-09-09 — the representative and the report become knobs too
 
 **Added**
