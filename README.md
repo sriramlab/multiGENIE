@@ -157,20 +157,25 @@ trusting a file.
 ## Results
 
 `RESULTS.md` is what the algorithm does on real data and which settings are safe to
-report: `one_se(1.6)` or `plateau(0.75)`, both under MIN, both scoring whole blocks.
+report. **Current (v5):** `complementary_split` averages the two directions' held-out
+curves and cuts once, with `plateau(0.75)` z ≥ 2.33 for the trait and `window(3, 1.645)` for
+its environments. On 100 null replicates it names 1/100 traits and 0/100 environments; on the
+42-environment pool it names 20/42 traits at 64.5% of the unselected fit. Section 0 has the
+numbers; sections 1-5 keep the v4 (MIN) record.
 The tables behind it are in `results/`, the figures in `figures/`, and everything
 there is an aggregate over traits, replicates or genome blocks.
 
 ## Repository map
 
 ```
-multi_gxe/          the current algorithm  (v4, this is what you should use)
+multi_gxe/          the current algorithm  (v5, this is what you should use)
   normal_eq.py        the exported system: load, slice, solve, normalise, jackknife
   evaluator.py        memoised solve layer; the batched delete-one jackknife
   cluster.py          stage 1
   grow.py             stage 2
   stopping.py         stage 3, and the rules measured so far
-  crossfit.py         stage 4, the estimator
+  crossfit.py         stage 4, the per-direction estimator (v4)
+  compsplit.py        v5: average the held-out curves, cut once, consensus set
   represent.py        stage 1b, the representative choosers
   combine.py          stage 4, how the two directions are reported
   simulate.py         synthetic exports, for tests and teaching
@@ -187,8 +192,8 @@ docs/
   algorithm.md        the method in full, including the statistics as implemented
   export_format.md    the JSON schema and how to produce it
   versions/           one document per version: what changed, and what it was measured on
-tests/              40 tests, including equivalence against the frozen implementations
-examples/           quickstart
+tests/              49 tests, including equivalence against the frozen implementations
+examples/           quickstart; compsplit_sim_arms.py and compsplit_real.py (v5 results)
 legacy/             every earlier version, frozen, kept to reproduce published numbers
 CHANGELOG.md        the version history in one page
 ```
@@ -205,7 +210,8 @@ in `docs/versions/`. `CHANGELOG.md` is the short form.
 | v2 | order by summed `h2_GxE`, not by p-value | 24x fewer jackknifed evaluations, Jaccard 0.68 to 0.86, same power. Backward elimination was tested and is inert |
 | v3 | representatives, and the cross-fitted split | the split is what makes the estimate out of fold. Representatives measured inert |
 | risk | a risk criterion replaces the p-value gate | at `L = 47`: RMSE 0.0082 against the full fit's 0.0133. At `L = 10` the older gate wins — the crossover is real |
-| **v4** | **grow full depth, cut on the held-out half, combine by MIN** | **self-calibrating at `alpha²`; the stopping rule became a pluggable pure function, and two rules already beat the first one adopted** |
+| v4 | grow full depth, cut on the held-out half, combine by MIN | self-calibrating at `alpha²`; the stopping rule became a pluggable pure function, and two rules already beat the first one adopted |
+| **v5** | **complementary split: average the held-out curves, cut once (plateau for the trait, window for the environments), consensus set** | **MIN deleted traits one half could not see (bmi -> 0); null 1/100 traits and 0/100 environments, one-causal precision 0.97, 42 environments 20/42 traits at 64.5%** |
 
 ## What this repository deliberately does not carry
 

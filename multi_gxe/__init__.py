@@ -18,6 +18,11 @@ Five stages.  Three of them are knobs, and they are the three you are meant to c
 
     crossfit(export_A, export_B, blocks, choose=..., rule=..., combine=...)
 
+Version 5 adds the recommended estimator, which averages the held-out curves of the
+two directions (or of 2B directions over B splits) BEFORE cutting:
+
+    complementary_split([(export_A, export_B)], blocks)    # compsplit.py
+
 `docs/algorithm.md` derives the identity that makes stages 2 and 3 cost nothing once
 the engine has run once; `CHANGELOG.md` says what each version changed and why.
 """
@@ -31,9 +36,11 @@ from .grow import grow_path, path_curve, envs_of
 from .stopping import (Curve, StopRule, plateau, one_se, window, gate, argmax,
                        fixed_k, nothing, everything, report, PANEL)
 from .crossfit import crossfit, direction, recut, Direction
-from . import simulate, represent, combine
+from .compsplit import (complementary_split, select_from_curves, average_curves,
+                        consensus)
+from . import simulate, represent, combine, compsplit
 
-__version__ = "4.2.0"
+__version__ = "5.0.0"
 
 __all__ = [
     "Export", "System", "load_export", "drop_envs", "select_indices",
@@ -46,5 +53,6 @@ __all__ = [
     "Curve", "StopRule", "plateau", "one_se", "window", "gate", "argmax",
     "fixed_k", "nothing", "everything", "report", "PANEL",
     "crossfit", "direction", "recut", "Direction", "simulate", "represent", "combine",
+    "complementary_split", "select_from_curves", "average_curves", "consensus", "compsplit",
     "__version__",
 ]

@@ -1,8 +1,40 @@
 # Changelog
 
-## Unreleased
+## 5.0.0 — 2026-09-15 — complementary-split selection: average the held-out curves, cut once
 
-### Added
+**Added**
+- `multi_gxe.complementary_split(pairs, blocks, gate_rule=plateau(0.75), z_gate=2.33,
+  set_rule=window(3, 1.645), rank="freq")`. For B complementary pairs it grows full-depth
+  paths on both halves of each, averages the 2B held-out curves by depth, names the trait on
+  the plateau cut with a z gate, and names environments as the consensus top-k of the window
+  cut (frequency over the selection halves, ties by mean rank). Returns
+  `tau = M(k_gate)`, `tau_selected = M(k_set)`, `tau_full = M(K)`.
+- `select_from_curves` (the decision as a pure function of cached curves, for null and
+  permutation runs), `average_curves`, `consensus`.
+- `examples/compsplit_sim_arms.py`, `examples/compsplit_real.py`;
+  `results/compsplit_null_power.tsv`, `results/compsplit_pool42.tsv`.
+- `docs/versions/v5_complementary_split.md`, and RESULTS.md section 0.
+
+**Why.** MIN deletes a trait whenever one half's own cut is empty (bmi on the 84-environment
+pool, split 1: halves 0.044 and 0.101, reported 0). Averaging the per-direction cuts loses
+the squared null rate.
+
+**Measured**
+- Null (100 matched replicates, no causal environment): trait named 1/100, any environment
+  0/100.
+- One causal block: power 0.79, precision 0.97, exact set 0.74.
+- Four causal blocks: power 0.60, recall 0.21.
+- 42 environments: 20/42 traits, 64.5% of the unselected fit, 42 blocks named.
+- 47 and 84 environments: on hold.
+
+**Rejected at the same time**
+- The "smallest k indistinguishable from the maximum" cut as the set rule: unstable on real
+  curves, and bmi's set went 1 -> 48 blocks across splits.
+- Replicate-crossing null pairs for averaged curves: within-replicate curves co-move.
+
+### Also in 5.0.0 (previously unreleased)
+
+#### Added
 - `drop_degenerate_nxe`, `nxe_identity_cos` and `NXE_IDENTITY_COS`: remove N x E columns
   collinear with the noise kernel (cosine to the identity above 0.99) while keeping the
   environment's G x E column. A balanced binary environment has `K_nxe = I` exactly and is
@@ -12,7 +44,7 @@
 - `Export.nxe_keep` / `Export.nxe_index`: the G x E and N x E sides may now differ in
   length. `None` means every environment carries an N x E column, as the engine writes it.
 
-### Not done
+#### Not done
 - The tables and figures in `RESULTS.md` sections 1-4 predate the fix and still use the
   1.2419 denominator.
 
