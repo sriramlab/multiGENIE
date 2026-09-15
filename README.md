@@ -193,7 +193,7 @@ docs/
   export_format.md    the JSON schema and how to produce it
   versions/           one document per version: what changed, and what it was measured on
 tests/              49 tests, including equivalence against the frozen implementations
-examples/           quickstart; compsplit_sim_arms.py and compsplit_real.py (v5 results)
+examples/           quickstart; compsplit_sim_arms.py, compsplit_real.py, plot_v5_figures.py (v5 results)
 legacy/             every earlier version, frozen, kept to reproduce published numbers
 CHANGELOG.md        the version history in one page
 ```
