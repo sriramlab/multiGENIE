@@ -18,8 +18,9 @@ Five stages.  Three of them are knobs, and they are the three you are meant to c
 
     crossfit(export_A, export_B, blocks, choose=..., rule=..., combine=...)
 
-Version 5 adds the recommended estimator, which averages the held-out curves of the
-two directions (or of 2B directions over B splits) BEFORE cutting:
+The estimator of the paper averages the held-out curves of the two directions (or of
+2B directions over B splits) BEFORE cutting, and its defaults are the paper's rule
+(plateau 0.5, one-sided Wald p < 0.05, consensus top-k_g set):
 
     complementary_split([(export_A, export_B)], blocks)    # compsplit.py
 
@@ -40,7 +41,7 @@ from .compsplit import (complementary_split, select_from_curves, average_curves,
                         consensus)
 from . import simulate, represent, combine, compsplit
 
-__version__ = "5.0.0"
+__version__ = "6.0.0"
 
 __all__ = [
     "Export", "System", "load_export", "drop_envs", "select_indices",

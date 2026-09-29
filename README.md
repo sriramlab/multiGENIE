@@ -25,6 +25,11 @@ reports its own noise.
 This repository is the algorithm that answers both, its full version history, and the
 frozen code behind the numbers each version was chosen on.
 
+**The current version (6.0.0) is the method of the manuscript.** `complementary_split`
+with no arguments is its Algorithm 1: plateau cut at 0.5, a trait reported at one-sided
+p < 0.05, the reported clusters the consensus top k_g. `docs/paper.md` maps every
+equation, table and figure of the paper to the code that produces it.
+
 ---
 
 ## The identity everything rests on
@@ -157,28 +162,31 @@ trusting a file.
 ## Results
 
 `RESULTS.md` is what the algorithm does on real data and which settings are safe to
-report. **Current (v5):** `complementary_split` averages the two directions' held-out
-curves and cuts once, with `plateau(0.75)` z ≥ 2.33 for the trait and `window(3, 1.645)` for
-its environments. On 100 null replicates it names 1/100 traits and 0/100 environments; on the
-42-environment pool it names 20/42 traits at 64.5% of the unselected fit. Section 0 has the
-numbers; sections 1-5 keep the v4 (MIN) record.
+report. **Current (v6, the paper):** `complementary_split` averages the two directions'
+held-out curves and cuts once at `plateau(0.5)`; a trait is reported at one-sided p < 0.05 and
+its clusters are the consensus top k_g. On 100 null replicates it reports 5; with one causal
+cluster power is 0.85; on 47 environments it reports 24 of 41 traits at a mean interaction
+heritability of 0.046. Section 0 has the numbers; the later sections keep the v5 and v4 record.
 The tables behind it are in `results/`, the figures in `figures/`, and everything
 there is an aggregate over traits, replicates or genome blocks.
 
 ## Repository map
 
 ```
-multi_gxe/          the current algorithm  (v5, this is what you should use)
+multi_gxe/          the current algorithm  (v6 = the paper; this is what you should use)
   normal_eq.py        the exported system: load, slice, solve, normalise, jackknife
   evaluator.py        memoised solve layer; the batched delete-one jackknife
   cluster.py          stage 1
   grow.py             stage 2
   stopping.py         stage 3, and the rules measured so far
   crossfit.py         stage 4, the per-direction estimator (v4)
-  compsplit.py        v5: average the held-out curves, cut once, consensus set
+  compsplit.py        average the held-out curves, cut once, consensus set (Algorithm 1)
   represent.py        stage 1b, the representative choosers
   combine.py          stage 4, how the two directions are reported
   simulate.py         synthetic exports, for tests and teaching
+atom_splits/        many complementary splits from one pass over the genotypes:
+                    atoms, the two passes, assembly, all pairs, validation, and the
+                    complementary split itself (folds.py)
 notebooks/
   build_algo_lab.py   generator for the lab notebook
   algo_lab.ipynb      edit the three knobs, see the effect on real exports,
@@ -190,10 +198,12 @@ results/            aggregate tables: null calibration, power, real recovery
 figures/            the figures RESULTS.md refers to
 docs/
   algorithm.md        the method in full, including the statistics as implemented
+  paper.md            every item of the manuscript: the code and the table behind it
   export_format.md    the JSON schema and how to produce it
   versions/           one document per version: what changed, and what it was measured on
-tests/              49 tests, including equivalence against the frozen implementations
-examples/           quickstart; compsplit_sim_arms.py, compsplit_real.py, plot_v5_figures.py (v5 results)
+tests/              51 tests, including equivalence against the frozen implementations
+examples/           quickstart; the figure and table scripts of the paper (docs/paper.md);
+                    compsplit_sim_arms.py, compsplit_real.py, plot_v5_figures.py (v5 results)
 legacy/             every earlier version, frozen, kept to reproduce published numbers
 CHANGELOG.md        the version history in one page
 ```
@@ -211,13 +221,14 @@ in `docs/versions/`. `CHANGELOG.md` is the short form.
 | v3 | representatives, and the cross-fitted split | the split is what makes the estimate out of fold. Representatives measured inert |
 | risk | a risk criterion replaces the p-value gate | at `L = 47`: RMSE 0.0082 against the full fit's 0.0133. At `L = 10` the older gate wins — the crossover is real |
 | v4 | grow full depth, cut on the held-out half, combine by MIN | self-calibrating at `alpha²`; the stopping rule became a pluggable pure function, and two rules already beat the first one adopted |
-| **v5** | **complementary split: average the held-out curves, cut once (plateau for the trait, window for the environments), consensus set** | **MIN deleted traits one half could not see (bmi -> 0); null 1/100 traits and 0/100 environments, one-causal precision 0.97, 42 environments 20/42 traits at 64.5%** |
+| v5 | complementary split: average the held-out curves, cut once (plateau for the trait, window for the environments), consensus set | MIN deleted traits one half could not see (bmi -> 0); null 1/100 traits and 0/100 environments, one-causal precision 0.97, 42 environments 20/42 traits at 64.5% |
+| **v6** | **the rule of the paper: plateau 0.5, reported at p < 0.05, set = consensus top k_g; 47 environments; atoms for many pairs** | **the window cut was unstable across splits and short on diffuse traits; null 5/100, one-causal power 0.85, 24/41 traits; 462 pairs from one genotype pass** |
 
 ## What this repository deliberately does not carry
 
-Algorithm and tests only. The pipeline that produces exports on a cluster, the
-simulation harness, the figure scripts, the environment and trait curation for the
-biobank analysis, and every result table live in the private working tree. Nothing
+The algorithm, its tests, the atom passes and the scripts behind the paper. The
+pipeline that produces exports on a cluster, the simulation harness and the environment
+and trait curation for the biobank analysis live in the private working tree. Nothing
 here embeds individual-level data, and none of the caches, exports or phenotypes are
 in git history.
 
@@ -235,5 +246,6 @@ were produced.
 Python 3.9 or newer, `numpy` and `scipy`. `pytest` to run the tests.
 
 ```bash
-python -m pytest tests -q       # 40 passed
+python -m pytest tests -q                 # 51 passed
+python -m pytest atom_splits/tests -q     # 11 passed (10 and one skipped without bed_reader)
 ```

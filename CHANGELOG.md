@@ -1,5 +1,31 @@
 # Changelog
 
+## 6.0.0 — 2026-09-29 — the rule of the paper is the default; many pairs from one genotype pass
+
+**Changed (breaking)**
+- `complementary_split` / `select_from_curves` defaults are the rule of the manuscript:
+  `gate_rule=plateau(0.5)`, `z_gate=1.645` (one-sided Wald p < 0.05), `set_rule=None`, which
+  sizes the reported set by the plateau cut (consensus top k_g). v5 had `plateau(0.75)`,
+  `2.33` and `window(3, 1.645)`; pass them explicitly for the v5 tables.
+- New constants `compsplit.Z_P`, `compsplit.Z_REPORT`.
+
+**Added**
+- `atom_splits/`: G family-intact atoms, the two genotype passes, the atom tensor, assembly of
+  any half into an `Export`, all 462 pairs through the same rule, the re-cut by groups of B
+  pairs, validation against dense kernels and against the engine, and the C++ passes as a
+  patch to the engine (`atom_splits/engine_backend/`). `atom_splits/folds.py` writes the complementary
+  split.
+- `examples/paper_sim_calibration.py`, `examples/paper_stability_splits.py`.
+- `examples/plot_paper_env_report.py`: age and sex as separate categories.
+- `examples/sim47_consistency.py`: inputs as arguments.
+- `docs/paper.md` (paper item -> script -> table), `docs/versions/v6_paper_rule.md`,
+  `results/paper_pool47/` (the tables of the manuscript).
+
+**Checked before release.** From the same exports and caches the repository reproduces the
+tables of the manuscript byte for byte: the per-trait table, the environment report, the
+estimator and category tables, the simulation tables, the three stability tables and the
+stability-against-B table.
+
 ## 5.0.0 — 2026-09-15 — complementary-split selection: average the held-out curves, cut once
 
 **Added**

@@ -5,19 +5,18 @@ combines the two cuts.  Under `min` a trait disappears whenever ONE half's cut c
 out empty -- bmi on pool87 split 1 went to zero with the two halves at 0.044 +- 0.035
 and 0.101 +- 0.030.  This module averages BEFORE cutting instead.
 
-THE ALGORITHM, for B complementary pairs (A_s, B_s):
+THE ALGORITHM, for B complementary pairs (A_s, B_s) -- Algorithm 1 of the paper:
 
-    for each pair s and each direction (grow on one half, score on the other):
+    for each pair s and each direction (order on one half, score on the other):
         grow the theta-ordered greedy path to full depth on the selection half
         fit its nested top-k models on the held-out half      -> C(k), k = 0..K
     M(k)  = mean of the 2B curves at each depth k             (jackknife: block-wise mean)
-    k_g   = gate_rule(M);  the trait is NAMED iff k_g > 0 and M[k_g] / se >= z_gate
-    tau   = M[k_g]                                            the reported total h2_GxE
-    k_s   = min(set_rule(M), k_g)
-    rank the blocks over the 2B selection halves by frequency in each half's top k_s
+    k_g   = plateau(z_p)(M), the smallest k with (M(K) - M(k)) / se < z_p     z_p = 0.5
+    the trait is REPORTED iff k_g > 0 and M(k_g) / se >= z_report            1.645, p < 0.05
+    tau   = M(k_g)                                            the reported total h2_GxE
+    rank the blocks over the 2B selection halves by frequency in each half's top k_g
     (ties: mean position over the full paths), or by mean truncated rank
-    blocks = the top k_s of that consensus                   the named environments
-    tau_selected = M[k_s]                                     held-out value of a selection that size
+    blocks = the top k_g of that consensus                    the reported clusters
 
 WHAT THE NUMBERS ARE, precisely.  `M(k)` is the out-of-fold cumulative h2_GxE of the
 top k of a greedy order, averaged over 2B orders that are each scored on data they were
@@ -25,10 +24,12 @@ not grown on.  It is NOT the held-out value of the consensus set: that set uses 
 selection half, so no half is left to score it.  `tau_full = M[K]` is the unselected fit
 averaged over the halves.
 
-THE DEFAULTS were chosen on cached curves of real engine fits (see
-`docs/versions/v5_complementary_split.md`): the gate `plateau(0.75)` at z >= 2.33 names
-the most traits and recovers the most signal at a null rate of 1/100; the set rule
-`window(3, 1.645)` gives the purest, most reproducible environment sets.
+THE DEFAULTS are the rule of the paper: `plateau(0.5)`, one-sided Wald p < 0.05
+(z >= 1.645), and the reported set sized by the same cut (`set_rule=None`).  Version 5
+shipped `plateau(0.75)`, z >= 2.33 and a second, shorter cut for the set,
+`window(3, 1.645)`; pass those explicitly to reproduce the v5 tables
+(`docs/versions/v5_complementary_split.md`).  A `set_rule` is still accepted: the set
+depth is then `min(set_rule(M), k_g)`.
 
 CALIBRATION.  Averaging removes the squaring that made `min` self-calibrating, and
 averaged curves of one replicate co-move, so replicate-crossing pairs are NOT a valid
@@ -45,11 +46,13 @@ import numpy as np
 from .crossfit import direction
 from .evaluator import Evaluator
 from .normal_eq import Export
-from .stopping import Curve, StopRule, plateau, window
+from .stopping import Curve, StopRule, plateau
 
-GATE_RULE = plateau(0.75)
-Z_GATE = 2.33
-SET_RULE = window(3, 1.645)
+Z_P = 0.5                   # plateau threshold, eq. (plateau) of the paper
+Z_REPORT = 1.645            # one-sided Wald p < 0.05 at the cut, eq. (report)
+GATE_RULE = plateau(Z_P)
+Z_GATE = Z_REPORT
+SET_RULE = None             # the reported set is the consensus top k_g
 
 
 def average_curves(curves: Sequence[Curve]) -> Curve:
@@ -96,7 +99,7 @@ def consensus(paths: Sequence[Sequence[int]], k: int, how: str = "freq") -> List
 
 def select_from_curves(curves: Sequence[Curve], paths: Sequence[Sequence[int]], *,
                        gate_rule: StopRule = GATE_RULE, z_gate: float = Z_GATE,
-                       set_rule: StopRule = SET_RULE, rank: str = "freq") -> Dict[str, Any]:
+                       set_rule: Optional[StopRule] = SET_RULE, rank: str = "freq") -> Dict[str, Any]:
     """The whole decision, as a pure function of the 2B held-out curves and their paths.
 
     `curves[i]` must be the held-out curve of `paths[i]`.  This is what a calibration
@@ -110,7 +113,7 @@ def select_from_curves(curves: Sequence[Curve], paths: Sequence[Sequence[int]], 
     se = M.se_at(k_g) if k_g > 0 else 0.0
     z = float(M.c[k_g] / se) if se > 0 else float("nan")
     names = bool(k_g > 0 and se > 0 and z >= z_gate)
-    k_s = min(int(set_rule(M)), k_g) if names else 0
+    k_s = (k_g if set_rule is None else min(int(set_rule(M)), k_g)) if names else 0
     blocks = consensus(paths, k_s, rank) if names else []
     return dict(names=names, tau=float(M.c[k_g]) if names else 0.0, se=float(se), z=z,
                 k=k_g, blocks=blocks, k_set=k_s,
@@ -121,7 +124,7 @@ def select_from_curves(curves: Sequence[Curve], paths: Sequence[Sequence[int]], 
 def complementary_split(pairs: Sequence[Tuple[Export, Export]],
                         blocks: Sequence[Sequence[int]], *,
                         gate_rule: StopRule = GATE_RULE, z_gate: float = Z_GATE,
-                        set_rule: StopRule = SET_RULE, rank: str = "freq",
+                        set_rule: Optional[StopRule] = SET_RULE, rank: str = "freq",
                         choose=None, corr: Optional[np.ndarray] = None,
                         order: str = "theta",
                         evaluators: Optional[Sequence[Tuple[Evaluator, Evaluator]]] = None

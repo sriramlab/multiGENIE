@@ -52,10 +52,7 @@ def test_b1_equals_the_average_of_the_two_v4_directions(folds):
 
 
 def test_signal_is_named_and_the_consensus_leads_with_causal_blocks(folds):
-    # The toy simulator's curves are jagged (a correlated block can pull the joint
-    # estimate down), so the default window set rule may legitimately return an empty
-    # set here -- "named, no single block stands out".  Fix the set size to test the
-    # consensus ranking itself.
+    # Fix the set size to test the consensus ranking itself.
     A, B, blocks = folds
     out = CS.complementary_split([(A, B)], blocks, set_rule=mg.fixed_k(2))
     assert out["names"]
@@ -80,3 +77,22 @@ def test_more_pairs_average_more_curves(folds):
     assert two["B"] == 2 and len(two["directions"]) == 4
     # the same halves listed twice give the same average
     assert np.allclose(one["curve"].c, two["curve"].c)
+
+
+def test_defaults_are_the_rule_of_the_paper(folds):
+    assert CS.Z_P == 0.5 and CS.Z_REPORT == CS.Z_GATE == 1.645 and CS.SET_RULE is None
+    A, B, blocks = folds
+    out = CS.complementary_split([(A, B)], blocks)
+    ref = CS.complementary_split([(A, B)], blocks, gate_rule=mg.plateau(0.5), z_gate=1.645,
+                                 set_rule=mg.everything())
+    assert out["names"] and out["k"] == int(mg.plateau(0.5)(out["curve"]))
+    # the reported set is the consensus top k_g: no second cut
+    assert out["k_set"] == out["k"] and len(out["blocks"]) == out["k"]
+    assert out["tau_selected"] == pytest.approx(out["tau"])
+    assert (out["k"], out["blocks"], out["tau"]) == (ref["k"], ref["blocks"], ref["tau"])
+
+
+def test_a_set_rule_still_shortens_the_set(folds):
+    A, B, blocks = folds
+    out = CS.complementary_split([(A, B)], blocks, set_rule=mg.fixed_k(1))
+    assert out["names"] and out["k_set"] == min(1, out["k"]) and len(out["blocks"]) == out["k_set"]

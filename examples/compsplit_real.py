@@ -52,7 +52,8 @@ def main() -> None:
         A, B = mg.load_export(fa), mg.load_export(fb)
         if not a.keep_degenerate_nxe:
             A, B = mg.drop_degenerate_nxe(A), mg.drop_degenerate_nxe(B)
-        r = mg.complementary_split([(A, B)], blocks)
+        r = mg.complementary_split([(A, B)], blocks, gate_rule=mg.plateau(0.75), z_gate=2.33,
+                                   set_rule=mg.window(3, 1.645))          # the v5 rule, no longer the default
         names = A.env_names
         envs = [" + ".join(label.get(names[e], names[e]) for e in blocks[b]) for b in r["blocks"]]
         dA, dB = r["directions"]

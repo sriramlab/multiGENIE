@@ -56,7 +56,8 @@ def run_real(a):
         if not (fa.exists() and fb.exists()):
             continue
         A, B = mg.drop_degenerate_nxe(mg.load_export(fa)), mg.drop_degenerate_nxe(mg.load_export(fb))
-        r = mg.complementary_split([(A, B)], blocks)
+        r = mg.complementary_split([(A, B)], blocks, gate_rule=mg.plateau(0.75), z_gate=2.33,
+                                   set_rule=mg.window(3, 1.645))          # the v5 rule, no longer the default
         names = A.env_names
         # one short name per block: its shortest member label (+n for multi-environment blocks)
         def blab(b):
