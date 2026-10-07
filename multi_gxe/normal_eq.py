@@ -26,7 +26,7 @@ environments that were selected.
 """
 from __future__ import annotations
 
-import json
+import json, os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Sequence
@@ -255,6 +255,8 @@ def drop_degenerate_nxe(export: Export,
     """
     if not export.has_nxe:
         return export
+    if os.environ.get("NXE_DROP", "0") != "1":      # 2026-10-06 (Methods A(S)): every selected environment keeps its NxE term;
+        return export                                # the identifiability drop is applied only when NXE_DROP=1 is set
     cos = nxe_identity_cos(export)
     keep_pos = [j for j, c in enumerate(cos) if c <= threshold]
     if len(keep_pos) == len(cos):
