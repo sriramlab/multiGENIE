@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Validation V1: exact equivalence of the atom assembler with a dense N x N reference.
 
-    ~/.conda/envs/test/bin/python atom_splits/validate_v1.py [--N 3000 --M 5000 --L 5 --G 6 --J 10]
+    ~/.conda/envs/test/bin/python scripts/atom_splits/validate_v1.py [--N 3000 --M 5000 --L 5 --G 6 --J 10]
 
 Simulates genotypes with missingness, L environments (one binary), 2 covariates and a
 G+GxE+NxE phenotype; builds the atom tensor with the streaming code (float64 AND float32,
@@ -27,7 +27,7 @@ from atomsplit import Design, atom_pass, bedio, dense, toy          # noqa: E402
 from atomsplit.tensor import AtomTensor                              # noqa: E402
 
 SCRATCH = Path(__import__("os").environ.get("ATOM_SCRATCH",
-                Path(__import__("tempfile").gettempdir()) / "atom_toy"))
+                "/work/tmp/claude-17523/-u-home-z-zhengton/66da34ed-b801-498e-8322-cbff7b478334/scratchpad/atom_toy"))
 
 
 def rel(a, b):
@@ -133,7 +133,7 @@ def main():
     print(f"  T rel diff {rel(Ta, Th):.2e}   q rel diff {rel(qa, qh):.2e}   (same probes restricted; differences = "
           "within-half W, SNP stats and y scaling)")
     try:
-        sys.path.insert(0, str(HERE.parent))
+        sys.path.insert(0, "/u/home/z/zhengton/project-sriram/multi_gxe_repo")
         import multi_gxe as mg
         exA = tensor64.assemble(tuple(range(a.G // 2)))
         exH = mg.Export(model="G+GxE+NxE", n_env=a.L, env_names=design.env_names,

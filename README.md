@@ -94,7 +94,8 @@ the rule working.**
 ## Quickstart
 
 ```bash
-python examples/quickstart.py
+python examples/quickstart.py                 # one split, the rule of the paper
+python examples/atom_splits_example.py        # 10 complementary pairs from one genotype pass (simulated data)
 ```
 
 ```
@@ -200,8 +201,9 @@ multi_gxe/          the current algorithm  (v6 = the paper; this is what you sho
   represent.py        stage 1b, the representative choosers
   combine.py          stage 4, how the two directions are reported
   simulate.py         synthetic exports, for tests and teaching
-atom_splits/        many complementary splits from one pass over the genotypes:
-                    atoms, the two passes, assembly, all pairs, validation, and the
+atom_splits/        many complementary splits from one pass over the genotypes (the paper's
+                    main real-data results, B = 462): atoms, the two passes, assembly, all
+                    pairs, the calibration of the layout, validation, and the
                     complementary split itself (folds.py)
 notebooks/
   build_algo_lab.py   generator for the lab notebook

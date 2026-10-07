@@ -2,22 +2,21 @@
 """Stage A: G family-intact, PC-balanced atoms on the env-complete sample, refining the
 paper's fold file so that atoms 0..G/2-1 = fold A and G/2..G-1 = fold B.
 
-    ~/.conda/envs/test/bin/python atom_splits/make_atoms.py --G 12 --seed 20260928
+    ~/.conda/envs/test/bin/python scripts/atom_splits/make_atoms.py --G 12 --seed 20260928
         -> data/atom_splits/atoms_pool47.G12.tsv (+ .report.tsv)
 
 Login node, ~5 min (the KING shards are read once).  Same inputs as
-folds.py: GENO, KIN glob, PCs; `--assume-unrelated` only if no kinship
+cluster_greedy_v3/folds.py: GENO, KIN glob, PCs; `--assume-unrelated` only if no kinship
 table in the right ID space exists (records the assumption in the report).
 """
 from __future__ import annotations
 
-import os
 import argparse
 import sys
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-ROOT = Path(os.environ.get("MULTI_GXE_ROOT", Path.cwd()))   # analysis root: data/, results/
+ROOT = HERE.parents[1]
 sys.path.insert(0, str(HERE))
 from atomsplit.atoms import make_atoms                                   # noqa: E402
 

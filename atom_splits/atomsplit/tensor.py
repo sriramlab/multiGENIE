@@ -41,7 +41,7 @@ import numpy as np
 
 from .model import kernel_names
 
-REPO = Path(__file__).resolve().parents[2]          # the repository root, which holds the multi_gxe package
+REPO = Path("/u/home/z/zhengton/project-sriram/multi_gxe_repo")
 
 
 def _mg():

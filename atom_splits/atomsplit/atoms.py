@@ -1,6 +1,6 @@
 """Stage A: G family-intact, ancestry-balanced, equal-sized atoms.
 
-Same inputs and the same three requirements as `folds.py` (families =
+Same inputs and the same three requirements as `cluster_greedy_v3/folds.py` (families =
 KING kinship components above 0.0442, PC1-4 balance, genome jackknife untouched), with
 one extra: when a fold file is given the atoms REFINE it -- atoms 0..G/2-1 partition fold
 A and G/2..G-1 partition fold B -- so the paper's own split is the pair
@@ -22,13 +22,16 @@ from typing import Dict, Optional
 
 import numpy as np
 
-HERE = Path(__file__).resolve().parents[1]          # atom_splits
-FOLDS_DIR = HERE                                    # folds.py sits beside the scripts
+HERE = Path(__file__).resolve().parents[1]          # scripts/atom_splits
+ROOT = HERE.parents[1]                              # multi_gxe
+FOLDS_DIR = ROOT / "scripts/cluster_greedy_v3"
 
 
 def _folds_module():
     if str(FOLDS_DIR) not in sys.path:
         sys.path.insert(0, str(FOLDS_DIR))
+    if str(ROOT / "scripts") not in sys.path:
+        sys.path.insert(0, str(ROOT / "scripts"))
     import folds
     return folds
 

@@ -60,7 +60,6 @@ def test_export_interface(setup):
 
 
 def test_bed_roundtrip(tmp_path):
-    pytest.importorskip("bed_reader")
     t = toy.make_toy(N=50, M=40, L=2, G=2, seed=5, miss_rate=0.05)
     files = toy.write_toy(t, tmp_path, "rt")
     d = Design.from_files(files["geno"], files["pheno"], files["covar"], files["env"], files["atoms"],

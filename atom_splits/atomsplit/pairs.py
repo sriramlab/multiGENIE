@@ -135,7 +135,7 @@ class DirectionRecord:
 
 
 def run_pair(tensor: AtomTensor, A: Sequence[int], B: Sequence[int], blocks0, names0, drop,
-             z_p: float = Z_P, order: str = "theta", pair_index: int = 0) -> List[DirectionRecord]:
+             z_p: float = Z_P, order: str = "dtau", pair_index: int = 0) -> List[DirectionRecord]:
     mg = _mg()
     from multi_gxe.crossfit import direction
     from multi_gxe.evaluator import Evaluator
@@ -262,7 +262,7 @@ def paper_pair(paper_dir: str, trait: str, blocks0, names0, drop, z_p: float, z_
 # --------------------------------------------------------------------- driver
 def run_trait(tensor: AtomTensor, trait: str, clusters_json: str, drop_cells: Optional[str],
               out_dir: str, *, n_pairs: Optional[int] = None, seed: int = 0, z_p: float = Z_P,
-              z_name: float = Z_NAME, order: str = "theta", jobs: int = 1,
+              z_name: float = Z_NAME, order: str = "dtau", jobs: int = 1,
               paper_dir: Optional[str] = None, log=print) -> Dict[str, Any]:
     mg = _mg()
     t0 = time.time()
