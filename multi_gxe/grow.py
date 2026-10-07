@@ -25,7 +25,7 @@ import numpy as np
 
 from .evaluator import Evaluator
 
-ORDERINGS = ("theta", "p")
+ORDERINGS = ("dtau", "theta", "p")   # dtau = gain tau(S+l) - tau(S) (Methods eq:greedy, 2026-10-06 default)
 
 
 def envs_of(blocks: Sequence[Sequence[int]], path: Sequence[int]) -> List[int]:
@@ -39,7 +39,7 @@ def envs_of(blocks: Sequence[Sequence[int]], path: Sequence[int]) -> List[int]:
 
 
 def grow_path(ev: Evaluator, blocks: Sequence[Sequence[int]], *,
-              order: str = "theta", reps: Optional[Sequence[int]] = None,
+              order: str = "dtau", reps: Optional[Sequence[int]] = None,
               max_rounds: Optional[int] = None) -> Dict[str, Any]:
     """Full-depth greedy traversal.  Returns the path and one record per round.
 
@@ -74,7 +74,12 @@ def grow_path(ev: Evaluator, blocks: Sequence[Sequence[int]], *,
 
     while live and len(path) < limit:
         prev = envs_of(blocks, path)
-        if order == "theta":
+        if order == "dtau":
+            base = ev.tau(prev)
+            key = {b: ev.tau(prev + scored(b)) - base for b in live}
+            win = max(live, key=lambda b: (key[b], -b))
+            rec = ev.evaluate(prev, scored(win))
+        elif order == "theta":
             key = {b: ev.theta(prev, scored(b)) for b in live}
             win = max(live, key=lambda b: (key[b], -b))
             rec = ev.evaluate(prev, scored(win))

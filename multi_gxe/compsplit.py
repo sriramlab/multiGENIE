@@ -126,7 +126,7 @@ def complementary_split(pairs: Sequence[Tuple[Export, Export]],
                         gate_rule: StopRule = GATE_RULE, z_gate: float = Z_GATE,
                         set_rule: Optional[StopRule] = SET_RULE, rank: str = "freq",
                         choose=None, corr: Optional[np.ndarray] = None,
-                        order: str = "theta",
+                        order: str = "dtau",
                         evaluators: Optional[Sequence[Tuple[Evaluator, Evaluator]]] = None
                         ) -> Dict[str, Any]:
     """Run the algorithm on B complementary pairs of exports.

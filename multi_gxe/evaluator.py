@@ -45,6 +45,7 @@ class Evaluator:
         self.export = export
         self.batched = bool(batched)
         self._theta: Dict[Tuple, float] = {}
+        self._tau: Dict[frozenset, float] = {}
         self._eval: Dict[Tuple, Dict[str, Any]] = {}
         self.n_theta = 0            # counters: the cost side of any ablation
         self.n_eval = 0
@@ -67,6 +68,23 @@ class Evaluator:
         comp = _component_h2_stack(f.x_l[np.ix_(idx, idx)], f.y_r[idx])
         val = float(comp[1 + len(prev):1 + len(subset)].sum())
         self._theta[key] = val
+        self.n_theta += 1
+        return val
+
+    def tau(self, subset: Sequence[int]) -> float:
+        """GxE heritability of `subset` (Methods eq:tau_subset): one full-sample solve on A(S), the GxE
+        components summed over every environment in S.  tau([]) = 0.  Memoised on the SET."""
+        subset = [int(e) for e in subset]
+        if not subset:
+            return 0.0
+        key = frozenset(subset)
+        if key in self._tau:
+            return self._tau[key]
+        idx = np.asarray(select_indices(self.export, subset), dtype=int)
+        f = self.export.full
+        comp = _component_h2_stack(f.x_l[np.ix_(idx, idx)], f.y_r[idx])
+        val = float(comp[1:1 + len(subset)].sum())
+        self._tau[key] = val
         self.n_theta += 1
         return val
 
