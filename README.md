@@ -99,18 +99,37 @@ python examples/atom_splits_example.py        # 10 complementary pairs from one 
 ```
 
 ```
-L = 13 environments -> K = 10 blocks
-truth: h2_GxE = 0.06 on env_0 and env_5, 0 elsewhere (total 0.12)
+L = 12 environments; truth: h2_GxE = 0.03 on env_0 and env_5, 0 elsewhere (total 0.06)
 
-grow on A (full depth, no gate)
-  path      [0, 2, 4, 6, 8, 7, 3, 9, 1, 5]
-  solves    55 ordering, 19 jackknifed
+reported = True   k_g = 2   tau = 0.0700 +- 0.0140   full-pool value c(L) = 0.0609
+reported set (selection frequency in the top k_g, ties by mean position): [0, 5]
+  ordering grown on one half: [0, 5, 7, 9, 2, 1, 6, 4, 10, 3, 8, 11]
+  ordering grown on one half: [0, 5, 6, 3, 2, 9, 1, 7, 4, 10, 11, 8]
 
-plateau z=1.645    tau = 0.1123 +- 0.0240  z =  4.68   k = 2 (A 2 / B 2)   names: True   (tail_test(0.01) gives the same cut)
-                   block 0 = [0, 1, 2], block 2 = [5]
+averaged held-out curve c-bar(k) with its paired-jackknife SE of c(k) - c(k-1):
+  k= 1  c=0.0273  +0.0273 (se 0.0036)
+  k= 2  c=0.0700  +0.0427 (se 0.0112)   <- cut
+  k= 3  c=0.0398  -0.0302 (se 0.0734)
+  k= 4  c=0.0573  +0.0175 (se 0.0477)
+  k= 5  c=0.0628  +0.0054 (se 0.0061)
+  k= 6  c=0.0643  +0.0015 (se 0.0031)
+  k= 7  c=0.0667  +0.0024 (se 0.0018)
+  k= 8  c=0.0674  +0.0007 (se 0.0020)
+  k= 9  c=0.0662  -0.0012 (se 0.0016)
+  k=10  c=0.0665  +0.0004 (se 0.0015)
+  k=11  c=0.0623  -0.0042 (se 0.0016)
+  k=12  c=0.0609  -0.0014 (se 0.0013)
 
-full-depth out-of-fold total (the denominator) = 0.1194
-the plateau rule keeps 94% of it on 2 of 10 blocks
+the same averaged curve under every rule in stopping.PANEL (k):
+  tail test gamma=0.01     k = 2
+  plateau z=1.645          k = 2
+  plateau z=1.28           k = 2
+  1-SE n_se=2              k = 2
+  window m=3               k = 0
+  gate alpha=0.05          (gate needs the in-fold round p-values)
+  argmax (oracle)          k = 2
+
+no complementary split (ordering scored on the half that grew it): k = 2, in-sample c(k_g) = 0.0645 against the held-out 0.0700; on a null curve the in-sample version is reported nearly always.
 ```
 
 In code:

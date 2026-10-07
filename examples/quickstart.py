@@ -1,17 +1,14 @@
 #!/usr/bin/env python3
-"""End to end on a synthetic export: cluster, grow, cut, report.
+"""The method of the paper on one simulated split, end to end, with no genotype file.
 
     python examples/quickstart.py
 
-No genotypes and no engine run: `multi_gxe.simulate` builds a normal-equation
-system in the real schema, and every stage downstream is the production code.
-
-READ THE NUMBERS AS MECHANICS, NOT AS EVIDENCE.  The toy imposes h2_GxE component
-by component, so correlated environments do not split a shared signal, and its
-signal sits in two blocks with a quiet tail.  Which stopping rule wins here is a
-property of that setup.  The measured comparison on real exports and on simulation
-arms built from real fits is in `docs/versions/v4_crossfit.md`.
-"""
+`multi_gxe.simulate` draws two half-sample normal-equation exports around one truth (the real schema,
+so the same code runs on engine exports).  The rule of the paper is `mg.complementary_split` with no
+arguments: forward selection on the gain in the GxE heritability tau(S) on one half, the ordering
+scored on the other half, both directions averaged, the cut k_g by the sequential tail tests at
+gamma = 0.01, a trait reported iff k_g > 0, and the reported environments the k_g with the highest
+selection frequency across the orderings.  No clustering: every environment is its own unit."""
 import sys
 from pathlib import Path
 
@@ -22,46 +19,42 @@ import multi_gxe as mg
 
 
 def main() -> None:
-    # ---- a design: 13 environments, one near-duplicate triple and one pair ----
-    corr, truth_blocks = mg.simulate.make_corr(seed=1)
+    # ---- a design: 12 environments, no strong correlations (the pool is curated beforehand) ----
+    corr, _ = mg.simulate.make_corr(block_sizes=(1,) * 12, background=0.05, seed=4)
     L = corr.shape[0]
+    h2 = mg.simulate.sparse_truth(L, tau=0.03, causal=[0, 5])
+    A, B = mg.simulate.simulate_fold_pair(corr, h2, se=0.003, seed=20)       # two independent halves, one truth
+    print(f"L = {L} environments; truth: h2_GxE = 0.03 on env_0 and env_5, 0 elsewhere (total {h2.sum():.2f})\n")
 
-    # stage 1: the blocks come from E alone, and never see the phenotype
-    blocks = mg.cluster_from_corr(corr, cut=0.8)
-    print(f"L = {L} environments -> K = {len(blocks)} blocks")
-    print(f"  blocks    {blocks}")
-    print(f"  truth     {truth_blocks}   (recovered exactly: "
-          f"{blocks == truth_blocks})\n")
+    # ---- the rule of the paper: one call ----
+    r = mg.complementary_split([(A, B)])
+    M = r["curve"]                                                           # the averaged held-out curve c-bar(k)
+    print(f"reported = {r['names']}   k_g = {r['k']}   tau = {r['tau']:.4f} +- {r['se']:.4f}   "
+          f"full-pool value c(L) = {r['tau_full']:.4f}")
+    print(f"reported set (selection frequency in the top k_g, ties by mean position): {r['blocks']}")
+    for d in r["directions"]:
+        print(f"  ordering grown on one half: {list(d.path)}")
+    print("\naveraged held-out curve c-bar(k) with its paired-jackknife SE of c(k) - c(k-1):")
+    for k in range(1, L + 1):
+        print(f"  k={k:2d}  c={M.c[k]:.4f}  {M.c[k] - M.c[k - 1]:+.4f} (se {M.se(k, k - 1):.4f})"
+              + ("   <- cut" if k == r["k"] else ""))
 
-    # two independent half-sample exports around one truth
-    h2 = mg.simulate.sparse_truth(L, tau=0.06, causal=[0, 5])
-    A, B = mg.simulate.simulate_fold_pair(corr, h2, se=0.003, seed=11)
-    print(f"truth: h2_GxE = 0.06 on env_0 and env_5, 0 elsewhere "
-          f"(total {h2.sum():.2f})\n")
+    # ---- the same curve under the other rules of the record (all pure functions of the curve) ----
+    print("\nthe same averaged curve under every rule in stopping.PANEL (k):")
+    for name, rule in mg.stopping.PANEL.items():
+        try:
+            print(f"  {name:<24} k = {rule(M)}")
+        except ValueError as e:                                              # `gate` needs the in-fold round p-values
+            print(f"  {name:<24} ({e})")
 
-    # stage 2: full-depth greedy on fold A, no stopping test
-    grown = mg.grow_path(mg.Evaluator(A), blocks)
-    print("grow on A (full depth, no gate)")
-    print(f"  path      {grown['path']}")
-    print(f"  solves    {grown['n_theta_solve']} ordering, "
-          f"{grown['n_gate_eval']} jackknifed\n")
-
-    # stages 3 and 4: cut the curve drawn on fold B, both directions, MIN
-    for name, rule in (("plateau z=1.645", mg.plateau(1.645)),
-                       ("1-SE n_se=2", mg.one_se(2.0)),
-                       ("window m=3", mg.window(3, 1.645)),
-                       ("gate alpha=0.05", mg.gate(0.05, 2))):
-        r = mg.crossfit(A, B, blocks, rule=rule)
-        named = ", ".join(f"block {b} = {blocks[b]}" for b in r["blocks"]) or "-"
-        print(f"{name:<18} tau = {r['tau']:.4f} +- {r['se']:.4f}  "
-              f"z = {r['z']:>5.2f}   k = {r['k']} (A {r['k_A']} / B {r['k_B']})"
-              f"   names: {r['names']}")
-        print(f"{'':<18} {named}")
-
-    r = mg.crossfit(A, B, blocks, rule=mg.plateau(1.645))
-    print(f"\nfull-depth out-of-fold total (the denominator) = {r['tau_full']:.4f}")
-    print(f"the plateau rule keeps {100 * r['tau'] / r['tau_full']:.0f}% of it "
-          f"on {r['k']} of {len(blocks)} blocks")
+    # ---- why the split: the in-sample curve of the ordering grown on A, scored on A ----
+    evA = mg.Evaluator(A)
+    pathA = r["directions"][0].path
+    c_in, j_in = mg.curve(evA, [[int(b)] for b in pathA])
+    cv_in = mg.Curve(c=np.asarray(c_in), j=np.asarray(j_in))
+    print(f"\nno complementary split (ordering scored on the half that grew it): "
+          f"k = {mg.tail_test(0.01)(cv_in)}, in-sample c(k_g) = {c_in[r['k']]:.4f} against the held-out {r['tau']:.4f}; "
+          f"on a null curve the in-sample version is reported nearly always.")
 
 
 if __name__ == "__main__":
