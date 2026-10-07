@@ -122,7 +122,7 @@ def select_from_curves(curves: Sequence[Curve], paths: Sequence[Sequence[int]], 
 
 
 def complementary_split(pairs: Sequence[Tuple[Export, Export]],
-                        blocks: Sequence[Sequence[int]], *,
+                        blocks: Optional[Sequence[Sequence[int]]] = None, *,
                         gate_rule: StopRule = GATE_RULE, z_gate: Optional[float] = Z_GATE,
                         set_rule: Optional[StopRule] = SET_RULE, rank: str = "freq",
                         choose=None, corr: Optional[np.ndarray] = None,
@@ -132,7 +132,9 @@ def complementary_split(pairs: Sequence[Tuple[Export, Export]],
     """Run the algorithm on B complementary pairs of exports.
 
     `pairs[s] = (export_A_s, export_B_s)`, the two halves of the s-th split.  B = 1
-    is one split.  `evaluators[s]` optionally reuses memoised evaluators for pair s.
+    is one split.  `blocks` groups environments into units of selection; the paper uses
+    none (the pool is curated so that no two environments are strongly correlated), which
+    is the default: every environment is its own block.  `evaluators[s]` optionally reuses memoised evaluators for pair s.
 
     Returns `select_from_curves` plus the per-direction paths, curves and
     representatives, so any other gate or set rule can be re-applied without
@@ -140,6 +142,8 @@ def complementary_split(pairs: Sequence[Tuple[Export, Export]],
     """
     if not pairs:
         raise ValueError("need at least one complementary pair")
+    if blocks is None:                      # v7: each environment is its own unit (K = L); no clustering
+        blocks = [[i] for i in range(pairs[0][0].n_env)]
     dirs = []
     for s, (A, B) in enumerate(pairs):
         evA, evB = evaluators[s] if evaluators is not None else (Evaluator(A), Evaluator(B))

@@ -45,7 +45,11 @@ jackknife blocks, so delete-one standard errors survive the slicing too.
 Cost, for `L` environments and `J` blocks: **one engine fit**, plus `O(L² J)` solves
 of a system of dimension at most `2L + 2`. Seconds against hours.
 
-## 3. Stage 1 — blocks from `E` alone
+## 3. Stage 1 — blocks from `E` alone (optional; not used by the paper)
+
+*The method of the manuscript applies no clustering: the pool is curated so that no two environments
+have |r| above 0.8 and each environment is its own unit of selection, K = L. The stage below is kept
+for an uncurated pool.*
 
 Average linkage on `1 - abs(r)`, cut at `abs(r) = 0.8`; average linkage means the cut
 is an average within-block correlation, not a minimum. Missing values are `-9` and

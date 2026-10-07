@@ -119,10 +119,19 @@ import multi_gxe as mg
 
 export_A = mg.load_export("trait.foldA.normal_eq.json")
 export_B = mg.load_export("trait.foldB.normal_eq.json")
-blocks   = mg.cluster_from_corr(mg.corr_from_env_file("envs.env"), cut=0.8)
 
-result = mg.crossfit(export_A, export_B, blocks, rule=mg.plateau(1.645))
-result["tau"], result["se"], result["blocks"], result["names"]
+result = mg.complementary_split([(export_A, export_B)])      # the rule of the paper, no clustering
+result["tau"], result["se"], result["blocks"], result["names"], result["k"]
+```
+
+No clustering is applied: the pool is curated beforehand so that no two environments are
+strongly correlated, and each environment is its own unit of selection (`K = L`). Grouping
+correlated environments into blocks (`mg.cluster_from_corr`) remains available as an optional
+first stage for a pool that has not been curated:
+
+```python
+blocks = mg.cluster_from_corr(mg.corr_from_env_file("envs.env"), cut=0.8)
+result = mg.complementary_split([(export_A, export_B)], blocks)
 ```
 
 The three knobs, and what each may look at:
