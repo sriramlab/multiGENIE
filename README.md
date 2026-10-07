@@ -25,10 +25,14 @@ reports its own noise.
 This repository is the algorithm that answers both, its full version history, and the
 frozen code behind the numbers each version was chosen on.
 
-**The current version (6.0.0) is the method of the manuscript.** `complementary_split`
-with no arguments is its Algorithm 1: plateau cut at 0.5, a trait reported at one-sided
-p < 0.05, the reported clusters the consensus top k_g. `docs/paper.md` maps every
-equation, table and figure of the paper to the code that produces it.
+**The current version (7.0.0) is the method of the manuscript.** `complementary_split`
+with no arguments is its Algorithm 1: forward selection on the gain in the GxE heritability
+`tau(S)` of each prefix (every selected environment keeps its NxE term), the ordering scored on
+the other half, the 2B held-out curves averaged, the cut `k_g` by sequential tail tests at level
+gamma = 0.01 (`mg.tail_test`), a trait reported iff `k_g > 0`, and the reported environments the
+`k_g` with the highest selection frequency across the orderings. `docs/paper.md` maps every
+equation, table and figure of the paper to the code that produces it; `tail_test(gamma)` is the
+only tuning constant and is set on null simulations.
 
 ---
 
@@ -101,7 +105,7 @@ grow on A (full depth, no gate)
   path      [0, 2, 4, 6, 8, 7, 3, 9, 1, 5]
   solves    55 ordering, 19 jackknifed
 
-plateau z=1.645    tau = 0.1123 +- 0.0240  z =  4.68   k = 2 (A 2 / B 2)   names: True
+plateau z=1.645    tau = 0.1123 +- 0.0240  z =  4.68   k = 2 (A 2 / B 2)   names: True   (tail_test(0.01) gives the same cut)
                    block 0 = [0, 1, 2], block 2 = [5]
 
 full-depth out-of-fold total (the denominator) = 0.1194
@@ -162,11 +166,14 @@ trusting a file.
 ## Results
 
 `RESULTS.md` is what the algorithm does on real data and which settings are safe to
-report. **Current (v6, the paper):** `complementary_split` averages the two directions'
-held-out curves and cuts once at `plateau(0.5)`; a trait is reported at one-sided p < 0.05 and
-its clusters are the consensus top k_g. On 100 null replicates it reports 5; with one causal
-cluster power is 0.85; on 47 environments it reports 24 of 41 traits at a mean interaction
-heritability of 0.046. Section 0 has the numbers; the later sections keep the v5 and v4 record.
+report. **Current (v7, the paper):** `complementary_split` averages the held-out curves of
+every pair and cuts once by the sequential tail tests at gamma = 0.01; a trait is reported iff
+the cut is positive. On 50 null replicates it reports 2 (realized level 0.04); with one causal
+environment power is 0.97 and the reported set is exactly the causal environment in 92% of
+replicates; on 49 environments and one split it reports 21 of 42 traits at a mean GxE
+heritability of 0.041, and on the average of 462 complementary pairs assembled from one
+genotype pass per trait the cut deepens on the diffuse traits (the manuscript's main results).
+The v6 (plateau) numbers remain in Section 0 for comparison.
 The tables behind it are in `results/`, the figures in `figures/`, and everything
 there is an aggregate over traits, replicates or genome blocks.
 
@@ -222,7 +229,8 @@ in `docs/versions/`. `CHANGELOG.md` is the short form.
 | risk | a risk criterion replaces the p-value gate | at `L = 47`: RMSE 0.0082 against the full fit's 0.0133. At `L = 10` the older gate wins — the crossover is real |
 | v4 | grow full depth, cut on the held-out half, combine by MIN | self-calibrating at `alpha²`; the stopping rule became a pluggable pure function, and two rules already beat the first one adopted |
 | v5 | complementary split: average the held-out curves, cut once (plateau for the trait, window for the environments), consensus set | MIN deleted traits one half could not see (bmi -> 0); null 1/100 traits and 0/100 environments, one-causal precision 0.97, 42 environments 20/42 traits at 64.5% |
-| **v6** | **the rule of the paper: plateau 0.5, reported at p < 0.05, set = consensus top k_g; 47 environments; atoms for many pairs** | **the window cut was unstable across splits and short on diffuse traits; null 5/100, one-causal power 0.85, 24/41 traits; 462 pairs from one genotype pass** |
+| v6 | plateau 0.5, reported at p < 0.05, set = consensus top k_g; 47 environments; atoms for many pairs | the window cut was unstable across splits and short on diffuse traits; null 5/100, one-causal power 0.85, 24/41 traits; 462 pairs from one genotype pass |
+| **v7** | **the rule of the paper: sequential tail tests at gamma = 0.01 (`tail_test`), reported iff k_g > 0, set = selection-frequency consensus; ordering by the gain in tau; every selected environment keeps its NxE term; one fixed pool of 49 for every trait** | **the plateau threshold had to be re-tuned for every pool and tested against the full-pool endpoint; the tail test's level does not depend on the pool, null 2/50 at gamma 0.01, one-causal power 0.97 with the exact set 92%, and it is what the Methods state** |
 
 ## What this repository deliberately does not carry
 

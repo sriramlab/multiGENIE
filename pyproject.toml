@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "multi-gxe"
-version = "6.0.0"
+version = "7.0.0"
 description = "Selecting environments that carry gene-by-environment signal, from one exported normal-equation system"
 readme = "README.md"
 requires-python = ">=3.9"

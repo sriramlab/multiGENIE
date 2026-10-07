@@ -90,8 +90,14 @@ def test_nxe_identity_cos_flags_a_pure_identity_column():
     assert cos[1] == pytest.approx(1.0)
     assert cos[0] < 0.99 and cos[2] < 0.99
 
-    pruned = drop_degenerate_nxe(ex)
-    assert pruned.nxe_index == (0, 2)          # env 1 keeps its GxE, loses its NxE
+    assert drop_degenerate_nxe(ex).nxe_index == (0, 1, 2)   # v7: every NxE term is kept unless NXE_DROP=1
+    import os
+    os.environ["NXE_DROP"] = "1"
+    try:
+        pruned = drop_degenerate_nxe(ex)
+    finally:
+        os.environ.pop("NXE_DROP")
+    assert pruned.nxe_index == (0, 2)          # with the drop on: env 1 keeps its GxE, loses its NxE
     assert pruned.n_env == L                   # the GxE side is untouched
     assert pruned.dim == 1 + L + 2 + 1
     assert pruned.full.x_l.shape == (pruned.dim, pruned.dim)

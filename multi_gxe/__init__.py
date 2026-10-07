@@ -34,7 +34,7 @@ from .evaluator import Evaluator, curve
 from .cluster import (cluster_from_corr, pairwise_corr, corr_from_env_file,
                       representatives, CUT, LINKAGE)
 from .grow import grow_path, path_curve, envs_of
-from .stopping import (Curve, StopRule, plateau, one_se, window, gate, argmax,
+from .stopping import (Curve, StopRule, plateau, tail_test, one_se, window, gate, argmax,
                        fixed_k, nothing, everything, report, PANEL)
 from .crossfit import crossfit, direction, recut, Direction
 from .compsplit import (complementary_split, select_from_curves, average_curves,
@@ -51,7 +51,7 @@ __all__ = [
     "cluster_from_corr", "pairwise_corr", "corr_from_env_file",
     "representatives", "CUT", "LINKAGE",
     "grow_path", "path_curve", "envs_of",
-    "Curve", "StopRule", "plateau", "one_se", "window", "gate", "argmax",
+    "Curve", "StopRule", "plateau", "tail_test", "one_se", "window", "gate", "argmax",
     "fixed_k", "nothing", "everything", "report", "PANEL",
     "crossfit", "direction", "recut", "Direction", "simulate", "represent", "combine",
     "complementary_split", "select_from_curves", "average_curves", "consensus", "compsplit",

@@ -123,7 +123,8 @@ Rules implemented, and what each references:
 
 | rule | stops when | reference |
 |---|---|---|
-| `plateau(z_thr)` | `(c[K] - c[k]) / se < z_thr` | the full-depth endpoint |
+| `tail_test(gamma)` **(the paper, v7)** | `max_{k'>k} (c[k'] - c[k]) / se < q_k(gamma)`, the first non-rejected H_k | every later depth; multiplier-bootstrap quantile |
+| `plateau(z_thr)` (v6) | `(c[K] - c[k]) / se < z_thr` | the full-depth endpoint |
 
 | `one_se(n_se)` | `c[k] >= max(c) - n_se * se` | the curve maximum |
 | `window(m, z_thr)` | the next `m` blocks add nothing significant | a local increment |
@@ -136,6 +137,16 @@ percentile, the same number as a two-sided 90% interval, for a per-direction rat
 0.05; `1.28` is the one-sided 90th, a two-sided 80% interval, for 0.10. Under MIN the
 reported null rate is the square, 0.0025 and 0.010, which is why the looser threshold
 is the better operating point here and would not be in a single-direction analysis.
+
+**The tail test.** For k = 0, 1, ... the hypothesis H_k, that no depth past k is higher
+than k, is tested with the maximum standardized rise past k; its null quantile is drawn by a
+Gaussian multiplier bootstrap over the delete-one-block replicates (the same multipliers at
+every depth), and the cut is the first k not rejected. The hypotheses are nested and tested
+in a fixed order, so the family-wise error is at most gamma with no multiplicity correction,
+H_0 is the trait-level test (reported iff k_g > 0), and adding uninformative environments to
+the pool does not move the cut, because the comparison is with depth k and not with the
+full-pool endpoint. The multiplier approximation is anti-conservative on 100 genome blocks
+(nominal 0.05 realized 0.10), so gamma is set on null simulations; gamma = 0.01 realizes 0.04.
 
 `se` is always the **paired** jackknife of the difference, `jk_se(j[a] - j[b])`,
 never the sum of two marginal SEs. The two prefixes are fits on the same

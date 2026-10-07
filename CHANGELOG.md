@@ -1,5 +1,38 @@
 # Changelog
 
+## 7.0.0 — 2026-10-07 — the rule of the paper: sequential tail tests
+
+**Changed (breaking)**
+- `complementary_split` / `select_from_curves` defaults: `gate_rule=tail_test(0.01)`, `z_gate=None`
+  (a trait is reported iff `k_g > 0`), `set_rule=None` (the reported set is the `k_g` environments with
+  the highest selection frequency across the 2B orderings).  The v6 rule is still available as
+  `gate_rule=plateau(0.5), z_gate=1.645`.
+- `grow_path` / `complementary_split` default ordering `"dtau"`: the environment with the largest gain
+  `tau(S + l) - tau(S)` (Methods, eq. greedy), ties by lowest index.  `"theta"` (the new environment's own
+  component in the refit) remains available; the two orderings diverge early on diffuse traits.
+- `drop_degenerate_nxe` is a no-op unless `NXE_DROP=1`: every selected environment keeps its NxE term, as the
+  Methods' A(S) states.  The identifiability drop removed the sex NxE term on one half or both for 30 of 42
+  traits and moved tau by up to 4 SE.
+
+**Added**
+- `stopping.tail_test(gamma, n_draw, seed)`: nested tail hypotheses, max standardized rise past depth k,
+  Gaussian-multiplier null quantile over the delete-one blocks (one draw of multipliers for every depth),
+  family-wise error at most gamma, cut independent of the number of null environments.
+- `Evaluator.tau(subset)`: the GxE heritability of a subset as one memoised solve.
+- `atom_splits/sim_q_pass.py`, `atom_splits/run_pairs_sim.py`, `atom_splits/score_atom_sims.py`: calibration
+  of the 462-pair layout by reusing one real trait's atom tensor (phenotype-free trace terms) with a one-probe
+  pass per simulated phenotype; `atom_splits/atom_results_tables.py`, `atom_splits/plot_atom_vs_single.py`.
+- `examples/core_tail.py` (core = individually significant selected environments, tail tested in aggregate),
+  `examples/plot_polygenicity_core.py`, `examples/plot_benchmark_ablation.py`, `examples/rule_lab.py`.
+- `tests/test_tail_test.py`.
+
+**Checked.** Realized level of the tail test on 50 null replicates (single split, 49 environments): 0.04 at
+gamma 0.01, 0.08 at 0.02, 0.10 to 0.12 at 0.03-0.05 (the multiplier approximation is anti-conservative,
+which is why gamma is set on null simulations); power 0.97 with one causal environment, exact set 92%.
+Scoring the ordering on the individuals that grew it reports 50 of 50 null replicates: the complementary
+split is not optional.
+
+
 ## 6.0.0 — 2026-09-29 — the rule of the paper is the default; many pairs from one genotype pass
 
 **Changed (breaking)**

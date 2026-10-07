@@ -46,13 +46,13 @@ import numpy as np
 from .crossfit import direction
 from .evaluator import Evaluator
 from .normal_eq import Export
-from .stopping import Curve, StopRule, plateau
+from .stopping import Curve, StopRule, plateau, tail_test
 
-Z_P = 0.5                   # plateau threshold, eq. (plateau) of the paper
-Z_REPORT = 1.645            # one-sided Wald p < 0.05 at the cut, eq. (report)
-GATE_RULE = plateau(Z_P)
-Z_GATE = Z_REPORT
-SET_RULE = None             # the reported set is the consensus top k_g
+GAMMA = 0.01                # level of the sequential tail tests, eq. (cut) of the paper (v7)
+GATE_RULE = tail_test(GAMMA)
+Z_GATE = None               # v7: a trait is reported iff k_g > 0 (H_0 rejected); no Wald gate on tau
+SET_RULE = None             # the reported set is the consensus top k_g (selection frequency, eq. (consensus))
+Z_P, Z_REPORT = 0.5, 1.645  # the v6 rule, kept for the v6 tables: gate_rule=plateau(Z_P), z_gate=Z_REPORT
 
 
 def average_curves(curves: Sequence[Curve]) -> Curve:
@@ -98,7 +98,7 @@ def consensus(paths: Sequence[Sequence[int]], k: int, how: str = "freq") -> List
 
 
 def select_from_curves(curves: Sequence[Curve], paths: Sequence[Sequence[int]], *,
-                       gate_rule: StopRule = GATE_RULE, z_gate: float = Z_GATE,
+                       gate_rule: StopRule = GATE_RULE, z_gate: Optional[float] = Z_GATE,
                        set_rule: Optional[StopRule] = SET_RULE, rank: str = "freq") -> Dict[str, Any]:
     """The whole decision, as a pure function of the 2B held-out curves and their paths.
 
@@ -112,7 +112,7 @@ def select_from_curves(curves: Sequence[Curve], paths: Sequence[Sequence[int]], 
     k_g = int(gate_rule(M))
     se = M.se_at(k_g) if k_g > 0 else 0.0
     z = float(M.c[k_g] / se) if se > 0 else float("nan")
-    names = bool(k_g > 0 and se > 0 and z >= z_gate)
+    names = bool(k_g > 0) if z_gate is None else bool(k_g > 0 and se > 0 and z >= z_gate)
     k_s = (k_g if set_rule is None else min(int(set_rule(M)), k_g)) if names else 0
     blocks = consensus(paths, k_s, rank) if names else []
     return dict(names=names, tau=float(M.c[k_g]) if names else 0.0, se=float(se), z=z,
@@ -123,7 +123,7 @@ def select_from_curves(curves: Sequence[Curve], paths: Sequence[Sequence[int]], 
 
 def complementary_split(pairs: Sequence[Tuple[Export, Export]],
                         blocks: Sequence[Sequence[int]], *,
-                        gate_rule: StopRule = GATE_RULE, z_gate: float = Z_GATE,
+                        gate_rule: StopRule = GATE_RULE, z_gate: Optional[float] = Z_GATE,
                         set_rule: Optional[StopRule] = SET_RULE, rank: str = "freq",
                         choose=None, corr: Optional[np.ndarray] = None,
                         order: str = "dtau",

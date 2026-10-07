@@ -61,7 +61,7 @@ def direction(export_grow: Export, export_eval: Export,
               blocks: Sequence[Sequence[int]], *,
               rule: Optional[StopRule] = None,
               choose=None, corr: Optional[np.ndarray] = None,
-              order: str = "theta",
+              order: str = "dtau",
               ev_grow: Optional[Evaluator] = None,
               ev_eval: Optional[Evaluator] = None) -> Direction:
     """Grow on `export_grow`, cut the curve drawn on `export_eval`.
@@ -116,7 +116,7 @@ def crossfit(export_A: Export, export_B: Export,
              blocks: Sequence[Sequence[int]], *,
              rule: Optional[StopRule] = None,
              choose=None, corr: Optional[np.ndarray] = None,
-             combine="min", order: str = "theta",
+             combine="min", order: str = "dtau",
              ev_A: Optional[Evaluator] = None,
              ev_B: Optional[Evaluator] = None) -> Dict[str, Any]:
     """Both directions, combined.  This is the algorithm.

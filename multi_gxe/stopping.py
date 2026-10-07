@@ -109,6 +109,56 @@ def plateau(z_thr: float = 1.645) -> StopRule:
     return rule
 
 
+def tail_test(gamma: float = 0.01, n_draw: int = 10000, seed: int = 20261005) -> StopRule:
+    """THE RULE OF THE PAPER (v7): sequential tail tests on the averaged held-out curve.
+
+    For each depth k = 0, 1, ... test H_k: "no depth past k is higher than k" with the
+    statistic `T_k = max_{k' > k} (c[k'] - c[k]) / se(c[k'] - c[k])` (paired jackknife SE),
+    reject when `T_k >= q_k(gamma)`, and cut at the first k not rejected:
+    `k_g = min { k : T_k < q_k(gamma) }`, `k_g = K` if every H_k is rejected.
+
+    `q_k(gamma)` is the upper-gamma quantile of T_k under the boundary of H_k, drawn by a
+    Gaussian multiplier bootstrap over the delete-one-block replicates: with
+    `d_j(k, k') = j[k', j] - j[k, j]` centred over blocks and xi ~ N(0, I_J),
+    `T*_k = max_{k'} sqrt((J-1)/J) * sum_j xi_j d_j(k, k') / se(k, k')`, each term of unit
+    variance given the data.  One draw of xi (fixed seed) serves every k and every curve.
+
+    The tests are nested (H_k true => H_{k+1} true) and run in a fixed order, so the
+    family-wise error is at most gamma with no multiplicity correction (Maurer 1995).
+    H_0 is the trait-level test: a trait is reported iff k_g > 0.  Because each test
+    compares the tail with depth k and not with the full-pool endpoint, the cut does not
+    depend on how many uninformative environments the pool carries.  The level is
+    calibrated on null simulations (the multiplier approximation is anti-conservative:
+    nominal 0.05 realized 0.10 on 50 null replicates; gamma = 0.01 realizes 0.04).
+    """
+    _xi = {}
+
+    def xi(J: int) -> np.ndarray:
+        if J not in _xi:
+            _xi[J] = np.random.default_rng(seed).standard_normal((n_draw, J))
+        return _xi[J]
+
+    def rule(cv: Curve) -> int:
+        c, Jm = np.asarray(cv.c, float), np.asarray(cv.j, float)
+        K = len(c) - 1
+        J = Jm.shape[1]
+        X = xi(J)
+        for k in range(K):
+            D = Jm[k + 1:] - Jm[k]                                   # (K-k, J) delete-one differences
+            se = np.sqrt((J - 1) / J * ((D - D.mean(1, keepdims=True)) ** 2).sum(1))
+            dm = c[k + 1:] - c[k]
+            ok = se > 0
+            if not ok.any():
+                return k
+            T = np.max(dm[ok] / se[ok])
+            W = np.sqrt((J - 1) / J) * (X @ (D[ok] - D[ok].mean(1, keepdims=True)).T)
+            if T < np.quantile(np.max(W / se[ok], axis=1), 1 - gamma):
+                return k
+        return K
+    rule.gamma = gamma
+    return rule
+
+
 def one_se(n_se: float = 2.0) -> StopRule:
     """Smallest prefix within `n_se` paired SEs of the curve's MAXIMUM.
 
@@ -209,6 +259,7 @@ def report(cv: Curve, k: int) -> dict:
 
 
 PANEL = {
+    "tail test gamma=0.01": tail_test(0.01),
     "plateau z=1.645": plateau(1.645),
     "plateau z=1.28": plateau(1.28),
     "1-SE n_se=2": one_se(2.0),

@@ -80,16 +80,20 @@ def test_more_pairs_average_more_curves(folds):
 
 
 def test_defaults_are_the_rule_of_the_paper(folds):
-    assert CS.Z_P == 0.5 and CS.Z_REPORT == CS.Z_GATE == 1.645 and CS.SET_RULE is None
+    # v7: sequential tail tests at gamma = 0.01, reported iff k_g > 0, set = consensus top k_g (selection frequency)
+    assert CS.GAMMA == 0.01 and CS.GATE_RULE.gamma == 0.01 and CS.Z_GATE is None and CS.SET_RULE is None
     A, B, blocks = folds
     out = CS.complementary_split([(A, B)], blocks)
-    ref = CS.complementary_split([(A, B)], blocks, gate_rule=mg.plateau(0.5), z_gate=1.645,
+    ref = CS.complementary_split([(A, B)], blocks, gate_rule=mg.tail_test(0.01), z_gate=None,
                                  set_rule=mg.everything())
-    assert out["names"] and out["k"] == int(mg.plateau(0.5)(out["curve"]))
+    assert out["names"] == (out["k"] > 0) and out["k"] == int(mg.tail_test(0.01)(out["curve"]))
     # the reported set is the consensus top k_g: no second cut
     assert out["k_set"] == out["k"] and len(out["blocks"]) == out["k"]
     assert out["tau_selected"] == pytest.approx(out["tau"])
     assert (out["k"], out["blocks"], out["tau"]) == (ref["k"], ref["blocks"], ref["tau"])
+    # the v6 rule is still available explicitly
+    v6 = CS.complementary_split([(A, B)], blocks, gate_rule=mg.plateau(CS.Z_P), z_gate=CS.Z_REPORT)
+    assert v6["k"] == int(mg.plateau(0.5)(v6["curve"]))
 
 
 def test_a_set_rule_still_shortens_the_set(folds):
