@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""The v5 estimator on real fold exports: one row per trait.
+"""The method on real fold exports: one row per trait.
 
     python examples/compsplit_real.py --exports <dir> --clusters clusters.json \
         --env-names env_names.tsv --traits traits.txt --out results/compsplit_pool42.tsv

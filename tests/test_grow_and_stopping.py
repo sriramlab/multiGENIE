@@ -26,16 +26,6 @@ def test_theta_ordering_is_cheaper_than_p_ordering(export, design):
     assert ev_t.n_eval < ev_p.n_eval
 
 
-def test_representatives_score_one_column_and_fit_the_block(export, design):
-    corr, blocks = design
-    reps = mg.representatives(corr, blocks)
-    got = mg.grow_path(mg.Evaluator(export), blocks, reps=reps)
-    # the fit still carries every member of an admitted block
-    assert set(mg.envs_of(blocks, got["path"])) == set(range(export.n_env))
-    with pytest.raises(ValueError, match="not a member"):
-        mg.grow_path(mg.Evaluator(export), blocks, reps=[99] * len(blocks))
-
-
 def _flat_curve(K=8, J=100, level=0.0, seed=0):
     rng = np.random.default_rng(seed)
     j = level + 0.001 * rng.standard_normal((K + 1, J))
@@ -47,6 +37,10 @@ def _rising_curve(K=8, J=100, top=0.10, k_true=2, seed=0):
     base = np.array([min(k, k_true) / k_true * top for k in range(K + 1)])
     j = base[:, None] + 0.002 * rng.standard_normal((K + 1, J))
     return mg.Curve(c=j.mean(axis=1), j=j, path=np.arange(K))
+
+
+def test_the_tail_test_returns_nothing_on_a_flat_curve():
+    assert mg.tail_test(0.01)(_flat_curve()) == 0
 
 
 def test_plateau_returns_nothing_on_a_flat_curve():

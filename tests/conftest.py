@@ -39,10 +39,3 @@ def export_json(tmp_path_factory, export):
     return path
 
 
-@pytest.fixture(scope="session")
-def legacy():
-    """The frozen pre-4.0 modules, imported the way their own scripts import them."""
-    sys.path.insert(0, str(ROOT / "legacy"))
-    import cluster_select
-    import select_env_subset
-    return select_env_subset, cluster_select

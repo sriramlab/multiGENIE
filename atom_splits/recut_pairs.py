@@ -13,7 +13,7 @@ from multi_gxe.stopping import Curve, plateau
 import os
 sys.path.insert(0, "/u/home/z/zhengton/project-sriram/multi_gxe_repo/examples")
 if os.environ.get("RULE", "plateau") == "twostep":
-    from twostep_rule import step1_depth
+    from tail_rule import step1_depth
 ap = argparse.ArgumentParser(); ap.add_argument("--trait", required=True); ap.add_argument("--res", required=True)
 ap.add_argument("--z-p", type=float, required=True); ap.add_argument("--z-name", type=float, default=1.645); ap.add_argument("--out", default=None)
 a = ap.parse_args()

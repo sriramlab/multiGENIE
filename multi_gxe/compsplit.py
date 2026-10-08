@@ -1,41 +1,30 @@
 """Complementary-split selection: average the held-out curves, then cut once.
 
-The v4 estimator (`crossfit.py`) cuts each direction on its own curve and then
-combines the two cuts.  Under `min` a trait disappears whenever ONE half's cut comes
-out empty -- bmi on pool87 split 1 went to zero with the two halves at 0.044 +- 0.035
-and 0.101 +- 0.030.  This module averages BEFORE cutting instead.
+THE ALGORITHM, for B complementary pairs (A_s, B_s):
 
-THE ALGORITHM, for B complementary pairs (A_s, B_s) -- Algorithm 1 of the paper:
+    for each pair s and each direction (grow on one half, score on the other):
+        grow the greedy path to full depth on the selection half, by the gain in tau(S)
+        fit its nested prefixes on the held-out half           -> c(k), k = 0..L
+    c_bar(k) = mean of the 2B curves at each depth             (jackknife: block-wise mean)
+    k_g      = tail_test(gamma)(c_bar): the first depth past which no later depth is
+               significantly higher, family-wise error at most gamma            gamma = 0.01
+    the trait is REPORTED iff k_g > 0                          (H_0, the trait-level test)
+    tau      = c_bar(k_g)                                      with its paired jackknife SE
+    the reported environments are the k_g with the highest selection frequency in the
+    top k_g of the 2B orderings, ties by mean position
 
-    for each pair s and each direction (order on one half, score on the other):
-        grow the theta-ordered greedy path to full depth on the selection half
-        fit its nested top-k models on the held-out half      -> C(k), k = 0..K
-    M(k)  = mean of the 2B curves at each depth k             (jackknife: block-wise mean)
-    k_g   = plateau(z_p)(M), the smallest k with (M(K) - M(k)) / se < z_p     z_p = 0.5
-    the trait is REPORTED iff k_g > 0 and M(k_g) / se >= z_report            1.645, p < 0.05
-    tau   = M(k_g)                                            the reported total h2_GxE
-    rank the blocks over the 2B selection halves by frequency in each half's top k_g
-    (ties: mean position over the full paths), or by mean truncated rank
-    blocks = the top k_g of that consensus                    the reported clusters
+WHAT THE NUMBERS ARE, precisely.  `c_bar(k)` is the out-of-fold GxE heritability of the top k
+of a greedy ordering, averaged over 2B orderings each scored on individuals they were not grown
+on.  It is NOT the held-out value of the consensus set: that set uses every selection half, so
+no half is left to score it.  `tau_full = c_bar(L)` is the full-pool fit averaged over the halves.
 
-WHAT THE NUMBERS ARE, precisely.  `M(k)` is the out-of-fold cumulative h2_GxE of the
-top k of a greedy order, averaged over 2B orders that are each scored on data they were
-not grown on.  It is NOT the held-out value of the consensus set: that set uses every
-selection half, so no half is left to score it.  `tau_full = M[K]` is the unselected fit
-averaged over the halves.
+Averaging before cutting is what distinguishes this from cutting each half's curve and combining
+the cuts: a minimum over halves deletes a trait whenever one half's cut is empty by chance.
 
-THE DEFAULTS are the rule of the paper: `plateau(0.5)`, one-sided Wald p < 0.05
-(z >= 1.645), and the reported set sized by the same cut (`set_rule=None`).  Version 5
-shipped `plateau(0.75)`, z >= 2.33 and a second, shorter cut for the set,
-`window(3, 1.645)`; pass those explicitly to reproduce the v5 tables
-(`docs/versions/v5_complementary_split.md`).  A `set_rule` is still accepted: the set
-depth is then `min(set_rule(M), k_g)`.
-
-CALIBRATION.  Averaging removes the squaring that made `min` self-calibrating, and
-averaged curves of one replicate co-move, so replicate-crossing pairs are NOT a valid
-null for this estimator.  Calibrate it on matched null replicates, or by re-running
-the whole pipeline inside permutation replicates -- `select_from_curves` makes that a
-pure function of the permuted curves.
+CALIBRATION.  The level of the tail tests rests on a Gaussian multiplier approximation, so gamma
+is set on matched null replicates (the whole decision is a pure function of the curves, so a
+replicate needs only those).  Averaged curves of one replicate co-move, so pairing curves across
+replicates is not a valid null.
 """
 from __future__ import annotations
 
@@ -52,7 +41,7 @@ GAMMA = 0.01                # level of the sequential tail tests, eq. (cut) of t
 GATE_RULE = tail_test(GAMMA)
 Z_GATE = None               # v7: a trait is reported iff k_g > 0 (H_0 rejected); no Wald gate on tau
 SET_RULE = None             # the reported set is the consensus top k_g (selection frequency, eq. (consensus))
-Z_P, Z_REPORT = 0.5, 1.645  # the v6 rule, kept for the v6 tables: gate_rule=plateau(Z_P), z_gate=Z_REPORT
+Z_P, Z_REPORT = 0.5, 1.645  # an earlier rule, kept for comparison: gate_rule=plateau(Z_P), z_gate=Z_REPORT
 
 
 def average_curves(curves: Sequence[Curve]) -> Curve:
@@ -125,7 +114,6 @@ def complementary_split(pairs: Sequence[Tuple[Export, Export]],
                         blocks: Optional[Sequence[Sequence[int]]] = None, *,
                         gate_rule: StopRule = GATE_RULE, z_gate: Optional[float] = Z_GATE,
                         set_rule: Optional[StopRule] = SET_RULE, rank: str = "freq",
-                        choose=None, corr: Optional[np.ndarray] = None,
                         order: str = "dtau",
                         evaluators: Optional[Sequence[Tuple[Evaluator, Evaluator]]] = None
                         ) -> Dict[str, Any]:
@@ -136,9 +124,8 @@ def complementary_split(pairs: Sequence[Tuple[Export, Export]],
     none (the pool is curated so that no two environments are strongly correlated), which
     is the default: every environment is its own block.  `evaluators[s]` optionally reuses memoised evaluators for pair s.
 
-    Returns `select_from_curves` plus the per-direction paths, curves and
-    representatives, so any other gate or set rule can be re-applied without
-    regrowing.
+    Returns `select_from_curves` plus the per-direction paths and curves, so any other
+    rule can be re-applied without regrowing.
     """
     if not pairs:
         raise ValueError("need at least one complementary pair")
@@ -147,7 +134,7 @@ def complementary_split(pairs: Sequence[Tuple[Export, Export]],
     dirs = []
     for s, (A, B) in enumerate(pairs):
         evA, evB = evaluators[s] if evaluators is not None else (Evaluator(A), Evaluator(B))
-        kw = dict(choose=choose, corr=corr, order=order)
+        kw = dict(order=order)
         dirs.append(direction(A, B, blocks, ev_grow=evA, ev_eval=evB, **kw))
         dirs.append(direction(B, A, blocks, ev_grow=evB, ev_eval=evA, **kw))
     out = select_from_curves([d.curve for d in dirs], [d.path for d in dirs],

@@ -1,246 +1,156 @@
 # The algorithm, in full
 
-This document states the method as implemented, including the statistics, and then
-the properties you should know before trusting a result. `README.md` is the summary;
-`docs/versions/` says how each piece was arrived at.
-
----
+What the code computes, in the order it computes it, with the statistics exactly as
+implemented. Equation names in parentheses are those of the manuscript.
 
 ## 1. The model
 
-For a trait `y`, genotypes `G`, covariates `X` and `L` candidate environments,
+For a standardized phenotype `y` (N individuals), standardized genotypes `X` (M variants) and a
+pool of `L` standardized environments `e_1, ..., e_L`,
 
-```
-y = Xb + g + sum_k (g * E_k) + sum_k (e * E_k) + e
-```
+    y = X a + sum_l (X . e_l) b_l + sum_l diag(e_l) d_l + eps
 
-with `g ~ N(0, sigma2_g K_G)`, each interaction term `g * E_k` its own variance
-component, and `e * E_k` a heteroscedastic noise term. `K_G` is the genetic
-relationship matrix; the G x E kernel of environment `k` is `K_G` scaled by the outer
-product of `E_k`, and the N x E kernel is diagonal in `E_k²`.
+with independent random effects `a ~ N(0, s2_g/M I)`, `b_l ~ N(0, s2_gxe,l/M I)`,
+`d_l ~ N(0, s2_nxe,l I)`, `eps ~ N(0, s2_e I)`: an additive term, a GxE term and a
+noise-by-environment (NxE) term per environment, and a residual. Covariates, including the
+environment main effects, are projected out of `y` and of every kernel. The `P = 2L + 2`
+variance components are estimated by the method of moments: `T s2 = q` with
+`T[p,p'] = tr(K_p K_p')` and `q[p] = y' K_p y` (eq. normal), the traces by a randomized
+(Hutchinson) estimator with `R` probes, and delete-one systems over `J` contiguous genome blocks
+for the jackknife. This fit is done by the engine (the engine/GENIE) and exported once per half
+(`docs/export_format.md`); the package never touches genotypes.
 
-Selecting environment `k` keeps **both** of its kernels. Dropping the N x E term of
-an unselected environment lets omitted heteroscedasticity leak onto the correlated
-environments that were selected, which is a bias in the reported `h2_GxE`, not a
-saving.
+## 2. The identity: every sub-model is a slice of one export
 
-## 2. The identity
+`T[p,p']` and `q[p]` are pairwise quantities, defined by one or two kernels and by nothing else in
+the model. The normal equations of a sub-model that uses only the environments in a subset `S`
+are therefore a principal submatrix of `T` on the components
 
-A method-of-moments estimator solves the normal equations `X sigma = y`:
+    A(S) = {g} u {(gxe,l) : l in S} u {(nxe,l) : l in S} u {e}
 
-```
-X[i][j] = tr(K_i K_j)        (a randomised trace estimate)
-X[i][C] = tr(K_i)            X[C][C] = N
-y[i]    = y' K_i y           y[C]    = y' y
-```
+and the matching entries of `q` (eq. subset). `s2(S) = T[A(S),A(S)]^-1 q[A(S)]` is exactly the
+estimator that fitting the model with only those environments would give. The GxE heritability of
+`S` is the share of phenotypic variance carried by its interaction terms in that fit,
 
-Each entry is a function of the two components it indexes alone. **The normal
-equations of any sub-model are therefore the corresponding principal submatrix of the
-full system**, and fitting a subset is a slice and a solve.
+    tau(S) = sum_{l in S} s2_gxe,l(S) tr(K_gxe,l) / sum_{p in A(S)} s2_p(S) tr(K_p),   tr(K_e) = N
 
-The exported system has dimension `1 + L + L + 1` under `G+GxE+NxE`
-(`1 + L + 1` under `G+GxE`), written for the full sample and for each of the `J`
-jackknife blocks, so delete-one standard errors survive the slicing too.
+(eq. tau_subset), with the traces read from the last column of `T`. It is a refit, not a partial
+sum of the full-pool estimates. The same slice of the delete-one systems gives the jackknife
+replicates `tau_(j)(S)` and `se = sqrt((J-1)/J sum_j (tau_(j) - mean)^2)` (eq. jkse). A subset
+costs `J + 1` solves of order at most `2|S| + 2`.
 
-Cost, for `L` environments and `J` blocks: **one engine fit**, plus `O(L² J)` solves
-of a system of dimension at most `2L + 2`. Seconds against hours.
+Code: `normal_eq.select_indices`, `slice_system`, `solve`, `component_h2`, `jk_se`;
+`Evaluator.tau` (memoised on the set) and `Evaluator.evaluate` (batched jackknife solves).
 
-## 3. Stage 1 — blocks from `E` alone (optional; not used by the paper)
+## 3. Forward selection on the gain
 
-*The method of the manuscript applies no clustering: the pool is curated so that no two environments
-have |r| above 0.8 and each environment is its own unit of selection, K = L. The stage below is kept
-for an uncurated pool.*
+Starting from the empty set, round `t` adds the environment with the largest gain,
 
-Average linkage on `1 - abs(r)`, cut at `abs(r) = 0.8`; average linkage means the cut
-is an average within-block correlation, not a minimum. Missing values are `-9` and
-are masked **pairwise**: the missingness pattern is shared across columns in real
-environment files, so leaving it in makes every pair look strongly correlated.
+    pi_t = argmax_{l not in S_{t-1}} [ tau(S_{t-1} u {l}) - tau(S_{t-1}) ],   S_t = S_{t-1} u {pi_t}
 
-The partition never sees `y`, so it is a property of the design. It can be computed
-once and frozen, and the same blocks then apply to every trait and every replicate.
+(eq. greedy), ties by lowest index, refitting at every round and always to full depth. Nothing is
+tested inside the grow. Every environment is its own unit of selection; the pool is curated
+beforehand so that no two environments are strongly correlated. Code: `grow.grow_path`.
 
-Why blocks rather than environments:
+## 4. Complementary splits and held-out curves
 
-* **Reproducibility.** Near-duplicate columns make round 1 a tie-break, and the loser
-  is then buried. Two runs of the same fit with different trace seeds shared nothing
-  at `k <= 3` on the trait where this was first seen.
-* **A fair yardstick.** Per-environment false-discovery rates charge a rule for
-  naming an `r = 0.98` copy of a causal environment.
-* **One legitimate test.** The block statistic is the jackknife of the block's
-  *summed* G x E, so within-block correlation is absorbed rather than modelled, and a
-  singleton block reduces exactly to the single-environment test.
+An ordering grown and scored on the same individuals is biased upward: each round picks the
+environment whose estimate happens to be largest on that sample, and a trait without GxE still
+shows a rising curve (on null simulations the in-sample curve is reported in every replicate).
+The individuals are therefore split into two complementary halves that keep families intact
+and are balanced on size and genetic ancestry (`atom_splits/folds.py`). Each half grows its
+ordering `pi^(h)`, and the curve of that ordering is scored on the other half,
 
-## 3b. Stage 1b — one candidate environment per block
+    c^(h)(k) = tau^(h')( {pi^(h)_1, ..., pi^(h)_k} ),   k = 0, ..., L
 
-A block of near-duplicates has to be scored somehow, and there are two answers.
+(eq. curve), an out-of-fold estimate at every depth, with jackknife replicates from the other
+half's delete-one systems. Over `B` pairs the `2B` curves are averaged,
 
-* **Score the whole block** (`choose=None`, the default). The round statistic is the
-  block's summed G x E with a jackknife of the sum. Nothing is discarded.
-* **Score one representative** (`multi_gxe/represent.py`). The ranking is done on one
-  column; the block is still FITTED whole once admitted, so the reported number
-  covers every member.
+    c_bar(k) = 1/(2B) sum_{s,h} c^(s,h)(k),
 
-Built-in choosers: `none`, `centroid` (medoid on `abs(r)`, design-only),
-`marginal` (largest marginal `h2_GxE` on the growth half), `first`, `fixed`. A
-chooser is `(blocks, ctx) -> list[int]`, so writing another is a few lines.
+and the replicates block by block (every half shares the same genome blocks), which gives the SE
+of `c_bar(k)` and of any difference `c_bar(k') - c_bar(k)` as a **paired** jackknife. The
+difference is paired because two prefixes are fits on the same individuals with strongly
+correlated errors; summing marginal SEs would inflate it several-fold. Code: `crossfit.direction`,
+`compsplit.average_curves`.
 
-**The rule that makes this safe: choose on the growth half only.** `crossfit` runs
-the chooser once per direction, against the growing fold's evaluator. A chooser that
-reads the evaluating half puts held-out data into the selection and the estimate
-stops being out of fold. This is the same failure that made a "global" representative
-a leak in v3.
+## 5. The cut: sequential tail tests
 
-Measured on the real pool: a Gram-matrix representative induces the same partition as
-the correlation one, and the selected sets do not move. It is a knob, not a lever.
+For each depth `k = 0, 1, ...` the hypothesis `H_k`: no depth past `k` is higher than `k`, is
+tested with the maximum standardized rise past `k`,
 
-## 4. Stage 2 — the grow
+    T_k = max_{k' > k} ( c_bar(k') - c_bar(k) ) / se( c_bar(k') - c_bar(k) )
 
-Each round scores every block not yet admitted, jointly with everything already
-admitted, and admits the winner. It runs to exhaustion: the path is a permutation of
-the blocks and every prefix is a nested sub-model.
+(eq. tailstat), at level `gamma`, in the fixed order `H_0, H_1, ...`; the cut is the first
+hypothesis not rejected, `k_g = min{k : T_k < q_k(gamma)}`, with `k_g = L` if every one is
+rejected (eq. cut). The hypotheses are nested (`H_k` true implies `H_{k+1}` true), so no
+multiplicity correction is needed: the procedure reaches a true hypothesis only after rejecting
+the first true one, which happens with probability at most `gamma`, and the family-wise error is
+at most `gamma`. `H_0` is the trait-level test; a trait is reported iff `k_g > 0`. Because each test
+compares the tail with depth `k` and not with the full-pool endpoint, adding uninformative
+environments to the pool does not move the cut.
 
-Ordering key, `order=`:
+The null quantile `q_k(gamma)` is drawn at the boundary of `H_k` by a Gaussian multiplier
+bootstrap over the jackknife replicates: with `d_(j)(k,k') = c_bar_(j)(k') - c_bar_(j)(k)`
+centred over blocks and `xi ~ N(0, I_J)`,
 
-* `theta` (default) — the largest summed `h2_GxE`. One full-sample solve per
-  candidate.
-* `p` — the smallest one-sided p-value. Needs the whole `J`-solve jackknife per
-  candidate.
+    T*_k = max_{k' > k} sqrt((J-1)/J) sum_j xi_j d_(j)(k,k') / se( c_bar(k') - c_bar(k) )
 
-They disagree on few traits. `theta` was adopted on cost and reproducibility: about
-24x fewer jackknifed evaluations, and a stable tail, because the p ordering re-ranks
-on a statistic whose denominator is itself noisy.
+(eq. multiplier), each term of unit variance given the data; `q_k(gamma)` is its upper-`gamma`
+quantile over `10^4` draws, and one draw of `xi` serves every depth and every trait. The
+approximation is anti-conservative on `J = 100` blocks (nominal 0.05 realizes about 0.10 on null
+replicates), which is why `gamma` is set on null simulations; `gamma = 0.01` realizes 0.04.
+Code: `stopping.tail_test`.
 
-`reps=` scores a block by one representative column while still fitting the whole
-block once admitted. Measured inert on the real pool; off by default.
+Other rules are kept as pure functions of the same curve for comparison (`plateau`: distance to
+the full-pool endpoint; `one_se`; `window`; `argmax`), and any `Curve -> int` function can be
+passed as `gate_rule`.
 
-**The grow carries no stopping test.** Running to exhaustion is what makes the cut
-free: one traversal scores every rule, at every threshold, forever.
+## 6. What is reported
 
-## 5. Stage 3 — the cut
+The `2B` orderings differ, so the reported set is a consensus. With `rho^(s,h)_l` the position of
+environment `l` in ordering `(s,h)`, its selection frequency in the top `k_g` is
+`f_l = 1/(2B) sum_{s,h} 1{rho^(s,h)_l <= k_g}` and its mean position `rho_bar_l`; environments are
+ranked by decreasing `f_l`, ties by increasing `rho_bar_l`, and the reported set is the first
+`k_g` (eq. consensus). For each trait: reported or not; `tau_hat = c_bar(k_g)` with its SE; the
+set; and the full-pool value `c_bar(L)`. Code: `compsplit.consensus`, `compsplit.select_from_curves`.
 
-A stopping rule is a pure function `Curve -> int`. It may read the out-of-fold
-cumulative curve `c`, its jackknife `j`, the in-fold round statistics `p` and `z`,
-and the path; it may not re-order the path or refit anything, which would be changing
-the grow.
+Four properties to keep in view. `c_bar(k)` is the out-of-fold value of *a* top-`k` selection,
+averaged over orderings scored on individuals they were not grown on. The tests concern the
+curve, a sequence of refits of subsets: an environment can raise the curve as a proxy for a
+modifier outside the pool. The error statement is about depths of the averaged curve; the
+consensus maps them to environments, exactly where the orderings agree. No held-out individuals
+remain to score the consensus set itself, so `tau_hat` is the value of a selection of size `k_g`,
+not of that exact set.
 
-Rules implemented, and what each references:
+## 7. Many splits from one pass over the genotypes
 
-| rule | stops when | reference |
-|---|---|---|
-| `tail_test(gamma)` **(the paper, v7)** | `max_{k'>k} (c[k'] - c[k]) / se < q_k(gamma)`, the first non-rejected H_k | every later depth; multiplier-bootstrap quantile |
-| `plateau(z_thr)` (v6) | `(c[K] - c[k]) / se < z_thr` | the full-depth endpoint |
+The trace estimates of a half are sums over its individuals. Partition the individuals once into
+`G` family-intact, ancestry-balanced atoms `A_1, ..., A_G`; a half is any union of `G/2` atoms and
+its complement the other. With `D_a` the selector of atom `a`, `K_p D_H z_r = sum_{a in H} w_{a,p}`
+with `w_{a,p} = K_p D_a z_r` independent of the half, so
 
-| `one_se(n_se)` | `c[k] >= max(c) - n_se * se` | the curve maximum |
-| `window(m, z_thr)` | the next `m` blocks add nothing significant | a local increment |
-| `gate(alpha, patience)` | the in-fold round p fails `patience` times | one block at a time |
-| `argmax()` | at the curve maximum | oracle, biased upward |
+    T_hat[p,p'](H) = sum_{a'' in H} sum_{a,a' in H} Gamma[a''; (a,p), (a',p')],
+    Gamma[a''; (a,p), (a',p')] = 1/R sum_r sum_{n in A_a''} w^(r)_{a,p,n} w^(r)_{a',p',n}
 
-Thresholds are **one-sided** normal quantiles, since only a shortfall below the
-reference is evidence against stopping. `z_thr = 1.645` is the one-sided 95th
-percentile, the same number as a two-sided 90% interval, for a per-direction rate of
-0.05; `1.28` is the one-sided 90th, a two-sided 80% interval, for 0.10. Under MIN the
-reported null rate is the square, 0.0025 and 0.010, which is why the looser threshold
-is the better operating point here and would not be in a single-direction analysis.
+(eq. blocks): one tensor `Gamma`, computed in one pass, gives the normal equations of every half
+by summation; the phenotype terms split the same way; and the delete-one tensors need only the
+inner products of each genome block's contribution with the totals, formed in a second pass.
+`G = 12` gives `C(12,6)/2 = 462` complementary pairs per trait for the cost of one pass. Code:
+`atom_splits/atomsplit/` (`stream.py` the passes, `tensor.py` the assembly), validated exactly
+against dense kernels and against the engine's own export.
 
-**The tail test.** For k = 0, 1, ... the hypothesis H_k, that no depth past k is higher
-than k, is tested with the maximum standardized rise past k; its null quantile is drawn by a
-Gaussian multiplier bootstrap over the delete-one-block replicates (the same multipliers at
-every depth), and the cut is the first k not rejected. The hypotheses are nested and tested
-in a fixed order, so the family-wise error is at most gamma with no multiplicity correction,
-H_0 is the trait-level test (reported iff k_g > 0), and adding uninformative environments to
-the pool does not move the cut, because the comparison is with depth k and not with the
-full-pool endpoint. The multiplier approximation is anti-conservative on 100 genome blocks
-(nominal 0.05 realized 0.10), so gamma is set on null simulations; gamma = 0.01 realizes 0.04.
+## 8. The statistics, exactly as implemented
 
-`se` is always the **paired** jackknife of the difference, `jk_se(j[a] - j[b])`,
-never the sum of two marginal SEs. The two prefixes are fits on the same
-individuals, their errors are strongly positively correlated, and treating them as
-independent inflates the standard error several-fold and stops the walk far too
-early.
-
-## 6. Stage 4 — the estimator
-
-Split the individuals into halves A and B, respecting family and ancestry structure,
-and run the engine once per half. Then
-
-```
-direction A->B:  grow the path on A (full depth), draw and cut the curve on B
-direction B->A:  the same, the other way
-tau = min(tau_{A->B}, tau_{B->A})
-```
-
-Each direction is fully out of fold: the set comes from one half, the number from the
-other. The reported set is the path of whichever direction gave the minimum, and
-`shared` reports how many blocks the two directions agree on.
-
-**Why MIN.** Naming anything requires both disjoint halves to name something, so a
-per-direction null rate `alpha` becomes `alpha²`. The calibration is structural, not
-tuned. `combine="avg"` is the alternative and is a different claim: it recovers more,
-but most of the extra comes from traits only one half could see.
-
-The combining step is itself pluggable (`multi_gxe/combine.py`): a combiner is
-`(dir_A, dir_B) -> dict` and decides three separate things — whether the trait is
-named at all, what number is reported, and which set is named. Built in are `min`,
-`avg`, `A`, `B` and `agreed` (the old hard intersection, kept because it is the
-conservative extreme). Any combiner that names on EITHER direction gives up the
-squared null rate and has to earn its calibration some other way.
-
-**What it costs.** Two engine fits on half samples instead of one on the whole, and
-every estimate is a half-sample estimate with the standard error that implies. The
-two directions can name different sets.
-
-## 7. The statistics, exactly as implemented
-
-* **`h2` normalisation** (`component_h2`) — component `i` is scaled by `tr(K_i)`, the
-  noise by `N`, and everything is divided by the total. Components are variance
-  fractions and their non-noise sum is the model's total. This is GENIE's
-  convention; the engine prints a different normaliser, so its `h2_*` lines and these
-  numbers differ by construction.
-* **Standard error** — delete-one jackknife over the exported blocks,
-  `sqrt((n-1)/n * sum (x - xbar)²)`. For a block it is the jackknife of the block's
-  summed G x E; for a difference of prefixes it is the paired jackknife of the
-  difference.
-* **p-value** — one-sided normal, `norm.sf(h2 / se)`, with `p := 1` whenever the
-  estimate is `<= 0`. A variance component is non-negative in truth, so a negative
-  estimate is noise, not evidence of interaction.
-* **The round p-value is a minimum over live candidates** and is therefore not
-  `U(0,1)`. Any rule that treats it as a single test is anti-conservative by roughly
-  the number of live candidates. This is the whole reason the family-wise error rate
-  of the raw gate grows with the pool.
-
-## 8. Properties to know before trusting a result
-
-These are properties of the method, verified against the source. None is an open bug.
-
-1. **The restricted solve is not always identical to re-running the engine on the
-   subset.** GENIE hardcodes `add_env_to_cov = true`, so one run with all `L`
-   environments regresses out every environment main effect as a fixed covariate. The
-   slicing identity is exact for the variance components, but the residual they act
-   on was built by conditioning on all `L`. the engine exposes this as a parameter
-   (`include_env_in_covariates`), and with it off the projector is identical across
-   subsets and the restricted solve becomes equal to a genuine subset refit. That
-   projection is also what guards against G-E correlation bias, so it is an
-   experiment, not a default.
-2. **The sample is the complete-case intersection over all `L` environments.** The
-   engine drops individuals missing any environment column and the export bakes that
-   sample in. Adding a badly-missing environment to the pool shrinks `N` for every
-   selection, including subsets that exclude it.
-3. **Single annotation only.** `gen_nbin` must be 1; the index arithmetic assumes one
-   additive component. Partitioned (MAF/LD, functional) annotations would shift every
-   G x E position.
-4. **Ill-conditioning is not silenced.** Near-duplicate environments in one fit make
-   the slice near-singular. `solve` raises rather than returning a pivoted
-   least-squares answer, because an `r = 0.998` pair is a modelling decision, not
-   something to patch over. Neither this nor the engine imposes non-negativity on
-   `sigma`.
-5. **Only `k = K` is unbiased.** The in-fold cumulative curve rises above the
-   unselected joint fit and comes back down; under a pure null it peaks at more than
-   twice the joint fit's standard error, in every replicate. Cutting an in-fold curve
-   reports selection noise. That is what stage 4 exists to prevent.
-6. **Export size** is `(J + 1) x (2L + 2)²` doubles at full precision, held in memory
-   on both sides. `L = 20, J = 100` is about 40 MB; `L = 200` would be about 4 GB.
-7. **A Wald test on the selected set is not a test.** Under a pure null the selected
-   subset's standard error is several times smaller than the full fit's while the
-   estimate collects the full fit's positive noise, so almost every named set clears
-   `p < 0.05`. "Did it name anything" and "was the named set significant" are the
-   same number. Report the first.
+* **Heritability normalisation** (`component_h2`): component `p` is scaled by `tr(K_p)`, the
+  residual by `N`, and everything is divided by the total; components are variance fractions.
+* **Standard error**: delete-one jackknife over the exported genome blocks,
+  `sqrt((J-1)/J sum_j (x_j - x_bar)^2)`; for a difference of prefixes, the paired jackknife of
+  the difference.
+* **Multiplier draws**: `10^4`, standard normal, seeded (`20261005`), one draw per `J` shared by
+  every depth and every trait.
+* **Consensus**: selection frequency at `k_g`, ties by mean full-path position, then by index.
+* **Nuisance terms**: every selected environment carries its NxE term into the sub-model; the
+  additive and residual terms are always present. (An identifiability drop of NxE kernels nearly
+  collinear with the identity exists in `normal_eq.drop_degenerate_nxe` but is off; `NXE_DROP=1`
+  enables it.)

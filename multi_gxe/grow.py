@@ -39,13 +39,9 @@ def envs_of(blocks: Sequence[Sequence[int]], path: Sequence[int]) -> List[int]:
 
 
 def grow_path(ev: Evaluator, blocks: Sequence[Sequence[int]], *,
-              order: str = "dtau", reps: Optional[Sequence[int]] = None,
+              order: str = "dtau",
               max_rounds: Optional[int] = None) -> Dict[str, Any]:
     """Full-depth greedy traversal.  Returns the path and one record per round.
-
-    `reps` scores a block by a single representative environment while still
-    fitting the whole block once admitted.  Leave it `None` (the default) to
-    score the block itself, which is the reference behaviour.
 
     Each round record carries `block_h2`, `block_se`, `z`, `p`, the cumulative
     `cum`/`cum_se`, the delete-one vector `jack_cum`, and `n_cand`, the number of
@@ -56,16 +52,8 @@ def grow_path(ev: Evaluator, blocks: Sequence[Sequence[int]], *,
     if order not in ORDERINGS:
         raise ValueError(f"order must be one of {ORDERINGS}; got {order!r}")
     blocks = [list(b) for b in blocks]
-    if reps is not None:
-        reps = [int(r) for r in reps]
-        if len(reps) != len(blocks):
-            raise ValueError(f"{len(reps)} representatives for {len(blocks)} blocks")
-        for r, b in zip(reps, blocks):
-            if r not in b:
-                raise ValueError(f"representative {r} is not a member of block {b}")
-
     def scored(b: int) -> List[int]:
-        return [reps[b]] if reps is not None else blocks[b]
+        return blocks[b]
 
     live = list(range(len(blocks)))
     limit = len(blocks) if max_rounds is None else min(int(max_rounds), len(blocks))
@@ -87,8 +75,6 @@ def grow_path(ev: Evaluator, blocks: Sequence[Sequence[int]], *,
             evals = {b: ev.evaluate(prev, scored(b)) for b in live}
             win = min(live, key=lambda b: (evals[b]["p"], -evals[b]["block_h2"]))
             rec = evals[win]
-        # the cumulative is always the fit over the FITTED environments, which
-        # differ from the scored ones when `reps` is in play
         cum = ev.cumulative(envs_of(blocks, path + [win]))
         rounds.append(dict(block=int(win), envs=list(blocks[win]),
                            block_h2=rec["block_h2"], block_se=rec["block_se"],
