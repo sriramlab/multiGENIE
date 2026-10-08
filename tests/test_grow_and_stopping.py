@@ -43,35 +43,17 @@ def test_the_tail_test_returns_nothing_on_a_flat_curve():
     assert mg.tail_test(0.01)(_flat_curve()) == 0
 
 
-def test_plateau_returns_nothing_on_a_flat_curve():
-    assert mg.plateau(1.645)(_flat_curve()) == 0
+def test_the_cut_ignores_null_environments_added_to_the_pool():
+    """The tail test compares with depth k, not with the full-pool endpoint, so padding the
+    pool with environments that add nothing must not move the cut."""
+    short = _rising_curve(K=8, k_true=2)
+    long_ = _rising_curve(K=20, k_true=2)
+    assert mg.tail_test(0.2)(short) == mg.tail_test(0.2)(long_)
 
 
-def test_plateau_stops_where_the_curve_stops_rising():
+def test_cut_depth_matches_the_rule_on_raw_arrays():
     cv = _rising_curve(k_true=2)
-    assert mg.plateau(1.645)(cv) == 2
-
-
-def test_one_se_is_monotone_in_its_knob():
-    cv = _rising_curve(k_true=4)
-    ks = [mg.one_se(n)(cv) for n in (0.0, 1.0, 2.0, 5.0)]
-    assert ks == sorted(ks, reverse=True)
-
-
-def test_window_reads_a_local_increment_not_the_tail():
-    """A curve that rises late: the tail test enters, the window test does not."""
-    K, J = 12, 100
-    rng = np.random.default_rng(3)
-    base = np.array([0.0] * 9 + [0.03, 0.06, 0.09, 0.12])
-    j = base[:, None] + 0.002 * rng.standard_normal((K + 1, J))
-    cv = mg.Curve(c=j.mean(axis=1), j=j, path=np.arange(K))
-    assert mg.window(2, 1.645)(cv) == 0
-    assert mg.plateau(1.645)(cv) > 0
-
-
-def test_gate_needs_the_in_fold_p_values():
-    with pytest.raises(ValueError, match="in-fold"):
-        mg.gate()(_flat_curve())
+    assert mg.cut_depth(cv.c, cv.j, 0.2) == mg.tail_test(0.2)(cv)
 
 
 def test_report_is_zero_at_k_zero():

@@ -36,7 +36,7 @@ def test_average_curves_is_the_pointwise_and_blockwise_mean():
         CS.average_curves([a, mg.Curve(c=np.zeros(4), j=np.zeros((4, 4)))])
 
 
-def test_b1_equals_the_average_of_the_two_v4_directions(folds):
+def test_one_pair_is_the_average_of_its_two_directions(folds):
     A, B, blocks = folds
     out = CS.complementary_split([(A, B)], blocks)
     a, b = out["directions"]
@@ -46,16 +46,13 @@ def test_b1_equals_the_average_of_the_two_v4_directions(folds):
     assert out["tau_full"] == pytest.approx(M[-1])
     if out["names"]:
         assert out["tau"] == pytest.approx(M[out["k"]])
-        assert out["k_set"] <= out["k"]
-        assert len(out["blocks"]) == out["k_set"]
-        assert out["tau_selected"] == pytest.approx(M[out["k_set"]])
+        assert len(out["blocks"]) == out["k"]
 
 
 def test_signal_is_named_and_the_consensus_leads_with_causal_blocks(folds):
-    # Fix the set size to test the consensus ranking itself.
     A, B, blocks = folds
-    out = CS.complementary_split([(A, B)], blocks, set_rule=mg.fixed_k(2))
-    assert out["names"]
+    out = CS.complementary_split([(A, B)], blocks)
+    assert out["names"] and out["k"] == 2
     causal_blocks = {i for i, blk in enumerate(blocks) if 0 in blk or 5 in blk}
     assert set(out["blocks"]) == causal_blocks
 
@@ -79,24 +76,19 @@ def test_more_pairs_average_more_curves(folds):
     assert np.allclose(one["curve"].c, two["curve"].c)
 
 
-def test_defaults_are_the_rule_of_the_paper(folds):
-    # v7: sequential tail tests at gamma = 0.01, reported iff k_g > 0, set = consensus top k_g (selection frequency)
-    assert CS.GAMMA == 0.01 and CS.GATE_RULE.gamma == 0.01 and CS.Z_GATE is None and CS.SET_RULE is None
+def test_defaults_are_the_method(folds):
+    assert CS.GAMMA == 0.01 and CS.GATE_RULE.gamma == 0.01 and CS.Z_GATE is None
     A, B, blocks = folds
     out = CS.complementary_split([(A, B)], blocks)
-    ref = CS.complementary_split([(A, B)], blocks, gate_rule=mg.tail_test(0.01), z_gate=None,
-                                 set_rule=mg.everything())
+    ref = CS.complementary_split([(A, B)], blocks, gate_rule=mg.tail_test(0.01), z_gate=None)
     assert out["names"] == (out["k"] > 0) and out["k"] == int(mg.tail_test(0.01)(out["curve"]))
     # the reported set is the consensus top k_g: no second cut
-    assert out["k_set"] == out["k"] and len(out["blocks"]) == out["k"]
-    assert out["tau_selected"] == pytest.approx(out["tau"])
+    assert len(out["blocks"]) == out["k"]
     assert (out["k"], out["blocks"], out["tau"]) == (ref["k"], ref["blocks"], ref["tau"])
-    # the v6 rule is still available explicitly
-    v6 = CS.complementary_split([(A, B)], blocks, gate_rule=mg.plateau(CS.Z_P), z_gate=CS.Z_REPORT)
-    assert v6["k"] == int(mg.plateau(0.5)(v6["curve"]))
 
 
-def test_a_set_rule_still_shortens_the_set(folds):
+def test_a_stricter_level_never_cuts_deeper(folds):
     A, B, blocks = folds
-    out = CS.complementary_split([(A, B)], blocks, set_rule=mg.fixed_k(1))
-    assert out["names"] and out["k_set"] == min(1, out["k"]) and len(out["blocks"]) == out["k_set"]
+    base = CS.complementary_split([(A, B)], blocks)
+    strict = CS.complementary_split([(A, B)], blocks, gate_rule=mg.tail_test(1e-4))
+    assert strict["k"] <= base["k"]

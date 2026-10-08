@@ -24,8 +24,7 @@ from .normal_eq import (Export, System, load_export, drop_envs, select_indices,
                         nxe_identity_cos, drop_degenerate_nxe, NXE_IDENTITY_COS)
 from .evaluator import Evaluator, curve
 from .grow import grow_path, path_curve, envs_of
-from .stopping import (Curve, StopRule, plateau, tail_test, one_se, window, gate, argmax,
-                       fixed_k, nothing, everything, report, PANEL)
+from .stopping import Curve, StopRule, tail_test, cut_depth, report
 from .crossfit import direction, Direction
 from .compsplit import (complementary_split, select_from_curves, average_curves,
                         consensus)
@@ -39,8 +38,7 @@ __all__ = [
     "nxe_identity_cos", "drop_degenerate_nxe", "NXE_IDENTITY_COS",
     "Evaluator", "curve",
     "grow_path", "path_curve", "envs_of",
-    "Curve", "StopRule", "plateau", "tail_test", "one_se", "window", "gate", "argmax",
-    "fixed_k", "nothing", "everything", "report", "PANEL",
+    "Curve", "StopRule", "tail_test", "cut_depth", "report",
     "direction", "Direction", "simulate",
     "complementary_split", "select_from_curves", "average_curves", "consensus", "compsplit",
     "__version__",

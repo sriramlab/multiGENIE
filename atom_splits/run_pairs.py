@@ -17,7 +17,7 @@ HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
 sys.path.insert(0, str(HERE))
 from atomsplit.tensor import AtomTensor                                   # noqa: E402
-from atomsplit.pairs import run_trait, Z_P, Z_NAME                        # noqa: E402
+from atomsplit.pairs import run_trait, GAMMA                              # noqa: E402
 
 
 def main():
@@ -30,8 +30,7 @@ def main():
     ap.add_argument("--out", default=str(ROOT / "results/atom_splits"))
     ap.add_argument("--n-pairs", type=int, default=None, help="random subset of pairs (default: all)")
     ap.add_argument("--seed", type=int, default=0)
-    ap.add_argument("--z-p", type=float, default=Z_P)
-    ap.add_argument("--z-name", type=float, default=Z_NAME)
+    ap.add_argument("--gamma", type=float, default=GAMMA, help="level of the sequential tail tests")
     ap.add_argument("--order", default="dtau", choices=["dtau", "theta", "p"])
     ap.add_argument("--jobs", type=int, default=1)
     ap.add_argument("--paper-dir", default="/u/scratch/z/zhengton/multi_gxe/sep6_pool47",
@@ -40,7 +39,7 @@ def main():
     tensor_path = a.tensor or f"/u/scratch/z/zhengton/multi_gxe/atom_splits/{a.trait}/{a.trait}.atoms.G12.npz"
     tensor = AtomTensor.load(tensor_path)
     run_trait(tensor, a.trait, a.clusters, a.drop_cells, a.out, n_pairs=a.n_pairs, seed=a.seed,
-              z_p=a.z_p, z_name=a.z_name, order=a.order, jobs=a.jobs, paper_dir=a.paper_dir or None)
+              gamma=a.gamma, order=a.order, jobs=a.jobs, paper_dir=a.paper_dir or None)
 
 
 if __name__ == "__main__":

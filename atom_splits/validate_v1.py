@@ -26,8 +26,7 @@ sys.path.insert(0, str(HERE))
 from atomsplit import Design, atom_pass, bedio, dense, toy          # noqa: E402
 from atomsplit.tensor import AtomTensor                              # noqa: E402
 
-SCRATCH = Path(__import__("os").environ.get("ATOM_SCRATCH",
-                "/work/tmp/claude-17523/-u-home-z-zhengton/66da34ed-b801-498e-8322-cbff7b478334/scratchpad/atom_toy"))
+SCRATCH = Path(__import__("os").environ.get("ATOM_SCRATCH", "/tmp/atom_toy"))      # where the toy .bed is written
 
 
 def rel(a, b):
@@ -133,7 +132,7 @@ def main():
     print(f"  T rel diff {rel(Ta, Th):.2e}   q rel diff {rel(qa, qh):.2e}   (same probes restricted; differences = "
           "within-half W, SNP stats and y scaling)")
     try:
-        sys.path.insert(0, "/u/home/z/zhengton/project-sriram/multi_gxe_repo")
+        sys.path.insert(0, str(HERE.parent))
         import multi_gxe as mg
         exA = tensor64.assemble(tuple(range(a.G // 2)))
         exH = mg.Export(model="G+GxE+NxE", n_env=a.L, env_names=design.env_names,

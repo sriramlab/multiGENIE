@@ -41,7 +41,7 @@ import numpy as np
 
 from .model import kernel_names
 
-REPO = Path("/u/home/z/zhengton/project-sriram/multi_gxe_repo")
+REPO = Path(__file__).resolve().parents[2]      # the repository root: atom_splits/atomsplit/tensor.py -> .
 
 
 def _mg():

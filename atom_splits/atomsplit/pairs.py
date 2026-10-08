@@ -2,7 +2,7 @@
 aggregate over pairs.
 
 Per pair (A, B) and direction: `multi_gxe.crossfit.direction` unchanged (full-depth greedy
-on the growth half, held-out curve on the other, plateau cut) -- the same call
+on the growth half, held-out curve on the other, the tail-test cut) -- the same call
 `stability_selection/robustness_pool47.py` makes on engine exports.  Tier-0/1 cells are
 sliced out and degenerate NxE columns dropped exactly as `load_pair` does there.
 
@@ -14,7 +14,7 @@ Aggregation (plan, Stage D.4):
     ES_tau(k)    Var_b M_b(k) / Mbar(k)^2                         (estimation stability, Lim & Yu)
     ES_c(k)      mean_d ||comp_d(k) - mean comp(k)||^2 / ||mean comp(k)||^2, comp = per-cluster
                  held-out components of the top-k refit
-    depth        the paper's plateau(z_p) on Mbar, named iff Mbar(k_g)/se >= z_name (unchanged);
+    depth        the sequential tail tests on Mbar: k_g, reported iff k_g > 0;
                  k_es = argmin_{1<=k<=k_g} ES_tau(k) reported alongside, never used for the call
     core sets    {C : f_C(q) >= pi} for q in (1, 3, 5, k_g), pi in (0.5, 0.75, 0.9, 1)
 Pair 0 is the paper's own split when the atoms refine its folds; its result is reported
@@ -34,7 +34,7 @@ import numpy as np
 
 from .tensor import AtomTensor, REPO
 
-Z_P, Z_NAME = 0.5, 1.645
+GAMMA = 0.01                           # level of the sequential tail tests (multi_gxe.tail_test)
 PIS = (0.5, 0.75, 0.9, 1.0)
 QS = (1, 3, 5)
 
@@ -135,11 +135,11 @@ class DirectionRecord:
 
 
 def run_pair(tensor: AtomTensor, A: Sequence[int], B: Sequence[int], blocks0, names0, drop,
-             z_p: float = Z_P, order: str = "dtau", pair_index: int = 0) -> List[DirectionRecord]:
+             gamma: float = GAMMA, order: str = "dtau", pair_index: int = 0) -> List[DirectionRecord]:
     mg = _mg()
     from multi_gxe.crossfit import direction
     from multi_gxe.evaluator import Evaluator
-    from multi_gxe.stopping import plateau
+    from multi_gxe.stopping import tail_test
     exA, blocksA = prepare_export(tensor.assemble(A), drop, blocks0, names0)
     exB, blocksB = prepare_export(tensor.assemble(B), drop, blocks0, names0)
     if list(exA.env_names) != list(exB.env_names) or blocksA != blocksB:
@@ -152,7 +152,7 @@ def run_pair(tensor: AtomTensor, A: Sequence[int], B: Sequence[int], blocks0, na
     evA, evB = Evaluator(exA), Evaluator(exB)
     out = []
     for grow, (eg, ee, exg, exe) in zip((A, B), ((evA, evB, exA, exB), (evB, evA, exB, exA))):
-        d = direction(exg, exe, blocksA, rule=plateau(z_p), order=order, ev_grow=eg, ev_eval=ee)
+        d = direction(exg, exe, blocksA, rule=tail_test(gamma), order=order, ev_grow=eg, ev_eval=ee)
         comps = held_out_components(ee, blocksA, d.path)
         out.append(DirectionRecord(pair=pair_index, grow=tuple(int(a) for a in grow),
                                    path=np.asarray(d.path, dtype=int), c=d.curve.c, j=d.curve.j,
@@ -172,9 +172,9 @@ def _restrict_nxe(mg, ex, keep_envs):
 
 
 # -------------------------------------------------------------- aggregation
-def aggregate(recs: List[DirectionRecord], K: int, z_p: float = Z_P, z_name: float = Z_NAME) -> Dict[str, Any]:
+def aggregate(recs: List[DirectionRecord], K: int, gamma: float = GAMMA) -> Dict[str, Any]:
     mg = _mg()
-    from multi_gxe.stopping import Curve, plateau
+    from multi_gxe.stopping import Curve, tail_test
     D = len(recs)
     Bp = D // 2
     C = np.stack([r.c for r in recs])                    # (D, K+1)
@@ -185,10 +185,10 @@ def aggregate(recs: List[DirectionRecord], K: int, z_p: float = Z_P, z_name: flo
     pairs = np.unique(pair_of)
 
     Mbar = mg.average_curves([Curve(c=r.c, j=r.j) for r in recs])
-    k_g = int(plateau(z_p)(Mbar))
+    k_g = int(tail_test(gamma)(Mbar))
     se = Mbar.se_at(k_g) if k_g > 0 else 0.0
     z = float(Mbar.c[k_g] / se) if se > 0 else float("nan")
-    named = bool(k_g > 0 and se > 0 and z >= z_name)
+    named = bool(k_g > 0)
     se_k = np.array([Mbar.se_at(k) if k > 0 else 0.0 for k in range(K + 1)])
 
     Mb = np.stack([C[pair_of == p].mean(0) for p in pairs])          # (B, K+1)
@@ -240,10 +240,10 @@ def leave_one_atom_out(tensor: AtomTensor, blocks0, names0, drop) -> Dict[str, A
                 loo_values=vals)
 
 
-def paper_pair(paper_dir: str, trait: str, blocks0, names0, drop, z_p: float, z_name: float) -> Optional[Dict]:
+def paper_pair(paper_dir: str, trait: str, blocks0, names0, drop, gamma: float = GAMMA) -> Optional[Dict]:
     """The paper's two engine exports through the same rule (V4 reference)."""
     mg = _mg()
-    from multi_gxe.stopping import plateau
+    from multi_gxe.stopping import tail_test
     fa = Path(paper_dir) / trait / f"{trait}.foldA.normal_eq.json"
     fb = Path(paper_dir) / trait / f"{trait}.foldB.normal_eq.json"
     if not (fa.exists() and fb.exists()):
@@ -253,7 +253,7 @@ def paper_pair(paper_dir: str, trait: str, blocks0, names0, drop, z_p: float, z_
     if A.nxe_index != B.nxe_index:
         keep = sorted(set(A.nxe_index) & set(B.nxe_index))
         A, B = _restrict_nxe(mg, A, keep), _restrict_nxe(mg, B, keep)
-    r = mg.complementary_split([(A, B)], bl, gate_rule=plateau(z_p), z_gate=z_name, set_rule=lambda cv: cv.K)
+    r = mg.complementary_split([(A, B)], bl, gate_rule=tail_test(gamma), z_gate=gamma, set_rule=lambda cv: cv.K)
     return dict(named=bool(r["names"]), k=int(r["k"]), tau=float(r["tau"]), se=float(r["se"]),
                 tau_full=float(r["tau_full"]), blocks=[int(b) for b in r["blocks"]],
                 n_A=None, n_B=None)
@@ -261,8 +261,8 @@ def paper_pair(paper_dir: str, trait: str, blocks0, names0, drop, z_p: float, z_
 
 # --------------------------------------------------------------------- driver
 def run_trait(tensor: AtomTensor, trait: str, clusters_json: str, drop_cells: Optional[str],
-              out_dir: str, *, n_pairs: Optional[int] = None, seed: int = 0, z_p: float = Z_P,
-              z_name: float = Z_NAME, order: str = "dtau", jobs: int = 1,
+              out_dir: str, *, n_pairs: Optional[int] = None, seed: int = 0, gamma: float = GAMMA,
+              order: str = "dtau", jobs: int = 1,
               paper_dir: Optional[str] = None, log=print) -> Dict[str, Any]:
     mg = _mg()
     t0 = time.time()
@@ -277,7 +277,7 @@ def run_trait(tensor: AtomTensor, trait: str, clusters_json: str, drop_cells: Op
         from concurrent.futures import ProcessPoolExecutor
         global _TENSOR
         _TENSOR = tensor
-        args = [(i, A, B, blocks0, names0, drop, z_p, order) for i, (A, B) in enumerate(pairs)]
+        args = [(i, A, B, blocks0, names0, drop, gamma, order) for i, (A, B) in enumerate(pairs)]
         with ProcessPoolExecutor(max_workers=jobs) as ex:
             for i, rs in enumerate(ex.map(_run_pair_global, args, chunksize=4)):
                 recs.extend(rs)
@@ -285,16 +285,16 @@ def run_trait(tensor: AtomTensor, trait: str, clusters_json: str, drop_cells: Op
                     log(f"[pairs] {i + 1}/{len(pairs)}  {time.time() - t0:.0f}s")
     else:
         for i, (A, B) in enumerate(pairs):
-            recs.extend(run_pair(tensor, A, B, blocks0, names0, drop, z_p, order, i))
+            recs.extend(run_pair(tensor, A, B, blocks0, names0, drop, gamma, order, i))
             if i % max(1, len(pairs) // 10) == 0:
                 log(f"[pairs] {i + 1}/{len(pairs)}  {time.time() - t0:.0f}s")
     _, blocks = prepare_export(tensor.assemble(pairs[0][0]), drop, blocks0, names0)
     K = len(blocks)
-    agg = aggregate(recs, K, z_p, z_name)
+    agg = aggregate(recs, K, gamma)
     loo = leave_one_atom_out(tensor, blocks0, names0, drop)
-    pap = paper_pair(paper_dir, trait, blocks0, names0, drop, z_p, z_name) if paper_dir else None
+    pap = paper_pair(paper_dir, trait, blocks0, names0, drop, gamma) if paper_dir else None
     p0 = [r for r in recs if r.pair == 0]
-    agg0 = aggregate(p0, K, z_p, z_name)
+    agg0 = aggregate(p0, K, gamma)
 
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
@@ -347,5 +347,5 @@ _TENSOR = None
 
 
 def _run_pair_global(args):
-    i, A, B, blocks0, names0, drop, z_p, order = args
-    return run_pair(_TENSOR, A, B, blocks0, names0, drop, z_p, order, i)
+    i, A, B, blocks0, names0, drop, gamma, order = args
+    return run_pair(_TENSOR, A, B, blocks0, names0, drop, gamma, order, i)

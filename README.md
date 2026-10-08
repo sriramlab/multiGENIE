@@ -26,7 +26,7 @@ orderings. `gamma` is the only tuning constant and is set on null simulations.
 pip install -e .                               # numpy, scipy; python >= 3.9
 python examples/quickstart.py                  # one split, simulated normal equations, ~5 s
 python examples/atom_splits_example.py         # 10 complementary pairs from one simulated genotype pass, ~1 min
-python -m pytest tests atom_splits/tests -q    # 44 tests (one needs bed_reader)
+python -m pytest tests atom_splits/tests -q    # 41 tests (one needs bed_reader)
 ```
 
 ```python
@@ -69,15 +69,6 @@ averaged held-out curve c-bar(k) with its paired-jackknife SE of c(k) - c(k-1):
   k=11  c=0.0623  -0.0042 (se 0.0016)
   k=12  c=0.0609  -0.0014 (se 0.0013)
 
-the same averaged curve under every rule in stopping.PANEL (k):
-  tail test gamma=0.01     k = 2
-  plateau z=1.645          k = 2
-  plateau z=1.28           k = 2
-  1-SE n_se=2              k = 2
-  window m=3               k = 0
-  gate alpha=0.05          (gate needs the in-fold round p-values)
-  argmax (oracle)          k = 2
-
 no complementary split (ordering scored on the half that grew it): k = 2, in-sample c(k_g) = 0.0645 against the held-out 0.0700; on a null curve the in-sample version is reported nearly always.
 ```
 
@@ -90,7 +81,7 @@ no complementary split (ordering scored on the half that grew it): k = 2, in-sam
 | forward selection on the gain in `tau(S)`, full depth, ties by lowest index | `multi_gxe/grow.py` |
 | one direction of a split: grow on one half, score on the other | `multi_gxe/crossfit.py` |
 | averaging the `2B` curves block by block; the decision; the consensus set | `multi_gxe/compsplit.py` |
-| the cut: `tail_test(gamma)`; other rules kept for comparison (`plateau`, `one_se`, `window`) | `multi_gxe/stopping.py` |
+| the cut: the sequential tail tests, `tail_test(gamma)` (or any `Curve -> int`) | `multi_gxe/stopping.py` |
 | simulated exports in the real schema, for tests and the quickstart | `multi_gxe/simulate.py` |
 | many complementary splits from one genotype pass: atoms, the two passes, the tensor, assembly of any half, all pairs, calibration | `atom_splits/` |
 | the scripts behind the paper's figures and tables | `examples/` (`docs/paper.md` maps each item to its script) |

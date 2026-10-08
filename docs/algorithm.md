@@ -102,9 +102,8 @@ approximation is anti-conservative on `J = 100` blocks (nominal 0.05 realizes ab
 replicates), which is why `gamma` is set on null simulations; `gamma = 0.01` realizes 0.04.
 Code: `stopping.tail_test`.
 
-Other rules are kept as pure functions of the same curve for comparison (`plateau`: distance to
-the full-pool endpoint; `one_se`; `window`; `argmax`), and any `Curve -> int` function can be
-passed as `gate_rule`.
+A stopping rule is a pure function `Curve -> int`, so any alternative can be passed as
+`gate_rule` and applied to the same saved curves without refitting.
 
 ## 6. What is reported
 

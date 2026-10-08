@@ -10,7 +10,7 @@ N x E columns collinear with the noise kernel are dropped first (`drop_degenerat
 Blocks are scored whole (`choose=None`).
 
 Columns: named, k (gate depth), tau = M[k] and its jackknife se / z, tau_full = M[K],
-k_set and tau_selected = M[k_set], the named environments in consensus order, and the
+the reported environments in consensus order, and the
 two halves' own full fits.
 """
 import argparse
@@ -57,12 +57,12 @@ def main() -> None:
         envs = [" + ".join(label.get(names[e], names[e]) for e in blocks[b]) for b in r["blocks"]]
         dA, dB = r["directions"]
         rows.append(dict(trait=t, named=int(r["names"]), k=r["k"], tau=r["tau"], se=r["se"], z=r["z"],
-                         tau_full=r["tau_full"], k_set=r["k_set"], tau_selected=r["tau_selected"],
+                         tau_full=r["tau_full"],
                          environments="; ".join(envs),
                          full_A_on_B=dA.tau_full, full_B_on_A=dB.tau_full,
                          top5_overlap=len(set(dA.path[:5]) & set(dB.path[:5]))))
         print(f"  {t:<28} named={int(r['names'])} tau={r['tau']:.4f} full={r['tau_full']:.4f} "
-              f"k={r['k']:>2} set={r['k_set']} [{time.time() - t0:.0f}s]", flush=True)
+              f"k={r['k']:>2} [{time.time() - t0:.0f}s]", flush=True)
     cols = list(rows[0])
     with open(a.out, "w") as fh:
         fh.write("\t".join(cols) + "\n")
