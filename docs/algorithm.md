@@ -86,9 +86,12 @@ hypothesis not rejected, `k_g = min{k : T_k < q_k(gamma)}`, with `k_g = L` if ev
 rejected (eq. cut). The hypotheses are nested (`H_k` true implies `H_{k+1}` true), so no
 multiplicity correction is needed: the procedure reaches a true hypothesis only after rejecting
 the first true one, which happens with probability at most `gamma`, and the family-wise error is
-at most `gamma`. `H_0` is the trait-level test; a trait is reported iff `k_g > 0`. Because each test
-compares the tail with depth `k` and not with the full-pool endpoint, adding uninformative
-environments to the pool does not move the cut.
+at most `gamma`. `H_0` is the trait-level test; a trait is reported iff `k_g > 0`. The target of
+each test is the averaged curve, so the guarantee concerns the depth at which that curve stops
+rising, not the number of causal environments: when orderings disagree on which environment comes
+next, the averaged curve can rise past the last causal one and the cut legitimately goes deeper.
+Because each test compares the tail with depth `k` and not with the full-pool endpoint, adding
+uninformative environments to the pool does not move the cut.
 
 The null quantile `q_k(gamma)` is drawn at the boundary of `H_k` by a Gaussian multiplier
 bootstrap over the jackknife replicates: with `d_(j)(k,k') = c_bar_(j)(k') - c_bar_(j)(k)`
@@ -98,9 +101,20 @@ centred over blocks and `xi ~ N(0, I_J)`,
 
 (eq. multiplier), each term of unit variance given the data; `q_k(gamma)` is its upper-`gamma`
 quantile over `10^4` draws, and one draw of `xi` serves every depth and every trait. The
-approximation is anti-conservative on `J = 100` blocks (nominal 0.05 realizes about 0.10 on null
-replicates), which is why `gamma` is set on null simulations; `gamma = 0.01` realizes 0.04.
-Code: `stopping.tail_test`.
+approximation is anti-conservative in the far tail on `J = 100` blocks: on 500 null replicates the
+realized level was 5.8% at the default `gamma = 0.05` (95% Wilson interval 4.1-8.2%) but 2.8% at
+`gamma = 0.01`, where the empirical null quantile of `T_0` exceeds the bootstrap one by 8-14%
+(5% at 0.05). The bootstrap p-value of the trait-level test, `p_0 = Pr*(T*_0 >= T_0)` from the same
+draws, supports multiplicity control across traits. Code: `stopping.tail_test`, `stopping.tail_pvalue`.
+
+**The reported estimate.** Refitting the consensus set on the halves is not held out: the set is
+chosen from all `2B` orderings and every individual sits on the growing side of some pair. The
+reported `tau-hat` is held out with respect to the choice of the set: for every subset `Q` of
+`G/4` blocks, the orderings grown on halves disjoint from `Q` give a consensus `S_Q` at depth `k_g`,
+`S_Q` is refitted on `Q` from the summed block tensor, and the values and their delete-one-block
+replicates are averaged over the subsets (eq. tau_heldout). Holding out `G/2` blocks instead leaves
+one ordering per subset and reproduces the curve point `c(k_g)` exactly, which is the built-in
+check. Code: `atom_splits/atomsplit/heldout.py`.
 
 A stopping rule is a pure function `Curve -> int`, so any alternative can be passed as
 `gate_rule` and applied to the same saved curves without refitting.

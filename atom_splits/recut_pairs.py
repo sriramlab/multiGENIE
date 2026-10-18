@@ -2,7 +2,7 @@
 """Re-cut saved atom pairs: `<res>/<trait>.pairs.npz` holds every held-out curve, its jackknife and
 its ordering, so the rule is re-applied with no refit.
 
-    python atom_splits/recut_pairs.py --trait ldl --res <results dir> [--gamma 0.01] [--out <dir>]
+    python atom_splits/recut_pairs.py --trait ldl --res <results dir> [--gamma 0.05] [--out <dir>]
 
 Writes `<out>/<trait>.summary.tsv`: the cut of the averaged curve of all pairs (k_g, tau, se, z, the
 consensus set and its lead) and, for comparison, the spread over single pairs."""

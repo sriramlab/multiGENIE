@@ -15,10 +15,13 @@ GxE heritability against the number of environments admitted. Many complementary
 are assembled from one pass over the genotypes, their held-out curves are averaged, and the
 averaged curve is cut once by a sequence of tail tests: at each depth `k` the test asks whether
 the curve rises significantly anywhere past `k`, and the cut `k_g` is the first depth at which it
-does not, with the family-wise error of the sequence held at `gamma`. The cut gives the trait's
-GxE heritability with a block-jackknife standard error, a trait is reported iff `k_g > 0`, and
-the reported environments are the `k_g` with the highest selection frequency across the
-orderings. `gamma` is the only tuning constant and is set on null simulations.
+does not, with the family-wise error of the sequence held at `gamma`. The guarantee concerns
+the depth at which the averaged curve stops rising, not the number of causal environments. A
+trait is reported iff `k_g > 0`; the reported environments are the `k_g` with the highest
+selection frequency across the orderings; and the reported GxE heritability, tau-hat, is the
+refit of that set on individuals withheld from its choice (`atom_splits/atomsplit/heldout.py`),
+with a block-jackknife standard error. `gamma` is the only tuning constant, 0.05 by default,
+where the rule is calibrated on null simulations.
 
 ## Install and run
 
@@ -26,7 +29,7 @@ orderings. `gamma` is the only tuning constant and is set on null simulations.
 pip install -e .                               # numpy, scipy; python >= 3.9
 python examples/quickstart.py                  # one split, simulated normal equations, ~5 s
 python examples/atom_splits_example.py         # 10 complementary pairs from one simulated genotype pass, ~1 min
-python -m pytest tests atom_splits/tests -q    # 41 tests (one needs bed_reader)
+python -m pytest tests atom_splits/tests -q    # 42 tests (one needs bed_reader)
 ```
 
 ```python
@@ -81,7 +84,8 @@ no complementary split (ordering scored on the half that grew it): k = 2, in-sam
 | forward selection on the gain in `tau(S)`, full depth, ties by lowest index | `multi_gxe/grow.py` |
 | one direction of a split: grow on one half, score on the other | `multi_gxe/crossfit.py` |
 | averaging the `2B` curves block by block; the decision; the consensus set | `multi_gxe/compsplit.py` |
-| the cut: the sequential tail tests, `tail_test(gamma)` (or any `Curve -> int`) | `multi_gxe/stopping.py` |
+| the cut: the sequential tail tests, `tail_test(gamma)` (or any `Curve -> int`); `tail_pvalue` for multiplicity control across traits | `multi_gxe/stopping.py` |
+| the reported estimate tau-hat: the held-out refit of the consensus set; `n_eff` | `atom_splits/atomsplit/heldout.py`, `atom_splits/run_heldout.py` |
 | simulated exports in the real schema, for tests and the quickstart | `multi_gxe/simulate.py` |
 | many complementary splits from one genotype pass: atoms, the two passes, the tensor, assembly of any half, all pairs, calibration | `atom_splits/` |
 | the scripts behind the paper's figures and tables | `examples/` (`docs/paper.md` maps each item to its script) |
@@ -104,7 +108,10 @@ validation (exact against dense kernels; against the engine to `1e-6`).
 ## Calibration
 
 The level of the tail tests rests on a Gaussian multiplier approximation to the jackknife
-distribution of the curve, which is anti-conservative on 100 genome blocks, so `gamma` is set
+distribution of the curve. On 500 null replicates the realized level was 5.8% at the default
+`gamma = 0.05` (95% Wilson interval 4.1-8.2%), but 2.8% at `gamma = 0.01`, because the
+approximation is anti-conservative in the far tail; with the causal environments forced first,
+the tests at nonzero depths rejected 4.6% of 370 partial-null replicates at 0.05. `gamma` is set
 on null replicates fitted exactly as the real traits (the trace terms are phenotype-free, so
 one engine fit per half serves every replicate and a replicate adds only its own phenotype
 terms). `examples/plot_sim_gamma.py` draws the realized level and the power against `gamma`;

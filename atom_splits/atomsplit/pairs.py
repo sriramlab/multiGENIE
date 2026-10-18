@@ -34,7 +34,7 @@ import numpy as np
 
 from .tensor import AtomTensor, REPO
 
-GAMMA = 0.01                           # level of the sequential tail tests (multi_gxe.tail_test)
+GAMMA = 0.05                           # level of the sequential tail tests (multi_gxe.tail_test)
 PIS = (0.5, 0.75, 0.9, 1.0)
 QS = (1, 3, 5)
 

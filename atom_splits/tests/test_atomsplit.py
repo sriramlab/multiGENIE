@@ -101,3 +101,28 @@ def test_enumerate_pairs():
     assert len(ps) == 10 and ps[0] == ((0, 1, 2), (3, 4, 5))
     assert all(sorted(A + B) == list(range(6)) for A, B in ps)
     assert len(enumerate_pairs(8, n_pairs=7, seed=1)) == 7
+
+
+def test_heldout_tau_reproduces_curve_points(tmp_path):
+    """With m = G/2 blocks held out, one ordering survives per subset -- the one grown on the
+    complement -- and the held-out refit of its consensus is that direction's curve point c(k)."""
+    import json
+    sys.path.insert(0, str(HERE.parent))
+    from atomsplit.pairs import run_trait
+    from atomsplit.heldout import heldout_tau, n_eff
+    t = toy.make_toy(N=600, M=600, L=5, G=G, seed=4, h2_gxe=(0.05, 0.03))   # run_trait summarises the top 5: L >= 5
+    tensor = atom_pass(toy.design_from_toy(t), bedio.ArrayBlockReader(t["codes"]), n_probes=B, seed=4, n_jk=J, snp_block=97, log=None)
+    names = list(tensor.env_names); cj = tmp_path / "toy.clusters.json"
+    json.dump(dict(pool="toy", trait="toy", K=len(names), clusters=[[i] for i in range(len(names))], env_names=names), cj.open("w"))
+    run_trait(tensor, "toy", str(cj), None, str(tmp_path), n_pairs=None, jobs=1, paper_dir=None, log=lambda s: None)
+    z = dict(np.load(tmp_path / "toy.pairs.npz", allow_pickle=True))
+    C, paths, pairs, po = np.asarray(z["C"], float), np.asarray(z["paths"]), np.asarray(z["pairs"]), np.asarray(z["pair_of"])
+    k = 1
+    chk = heldout_tau(tensor, z, k_g=k, m=G // 2)
+    grow = [set(pairs[po[d]][: G // 2]) if d % 2 == 0 else set(pairs[po[d]][G // 2:]) for d in range(len(paths))]
+    for r in chk["rows"]:
+        d = [d for d in range(len(paths)) if not (grow[d] & set(r["subset"]))]
+        assert len(d) == 1 and abs(r["tau"] - C[d[0], k]) < 1e-10
+    h = heldout_tau(tensor, z, k_g=k)
+    assert h["m"] == G // 4 and h["n_subsets"] == G and np.isfinite(h["tau"]) and h["se"] >= 0
+    assert abs(sum(h["comps"]) - h["tau"]) < 1e-10 and np.isfinite(n_eff(h["comps"])) or h["tau"] <= 0

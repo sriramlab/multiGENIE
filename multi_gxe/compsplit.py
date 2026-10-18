@@ -7,7 +7,7 @@ THE ALGORITHM, for B complementary pairs (A_s, B_s):
         fit its nested prefixes on the held-out half           -> c(k), k = 0..L
     c_bar(k) = mean of the 2B curves at each depth             (jackknife: block-wise mean)
     k_g      = tail_test(gamma)(c_bar): the first depth past which no later depth is
-               significantly higher, family-wise error at most gamma            gamma = 0.01
+               significantly higher, family-wise error at most gamma            gamma = 0.05
     the trait is REPORTED iff k_g > 0                          (H_0, the trait-level test)
     tau      = c_bar(k_g)                                      with its paired jackknife SE
     the reported environments are the k_g with the highest selection frequency in the
@@ -37,7 +37,7 @@ from .evaluator import Evaluator
 from .normal_eq import Export
 from .stopping import Curve, StopRule, tail_test
 
-GAMMA = 0.01                # level of the sequential tail tests, eq. (cut)
+GAMMA = 0.05                # level of the sequential tail tests, eq. (cut)
 GATE_RULE = tail_test(GAMMA)
 Z_GATE = None               # a trait is reported iff k_g > 0 (H_0 rejected); no separate Wald gate
 

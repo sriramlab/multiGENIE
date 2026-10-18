@@ -71,8 +71,8 @@ class Curve:
 StopRule = Callable[[Curve], int]
 
 
-def tail_test(gamma: float = 0.01, n_draw: int = 10000, seed: int = 20261005) -> StopRule:
-    """THE RULE OF THE PAPER (v7): sequential tail tests on the averaged held-out curve.
+def tail_test(gamma: float = 0.05, n_draw: int = 10000, seed: int = 20261005) -> StopRule:
+    """THE RULE OF THE PAPER: sequential tail tests on the averaged held-out curve.
 
     For each depth k = 0, 1, ... test H_k: "no depth past k is higher than k" with the
     statistic `T_k = max_{k' > k} (c[k'] - c[k]) / se(c[k'] - c[k])` (paired jackknife SE),
@@ -87,11 +87,17 @@ def tail_test(gamma: float = 0.01, n_draw: int = 10000, seed: int = 20261005) ->
 
     The tests are nested (H_k true => H_{k+1} true) and run in a fixed order, so the
     family-wise error is at most gamma with no multiplicity correction (Maurer 1995).
-    H_0 is the trait-level test: a trait is reported iff k_g > 0.  Because each test
-    compares the tail with depth k and not with the full-pool endpoint, the cut does not
-    depend on how many uninformative environments the pool carries.  The level is
-    calibrated on null simulations (the multiplier approximation is anti-conservative:
-    nominal 0.05 realized 0.10 on 50 null replicates; gamma = 0.01 realizes 0.04).
+    H_0 is the trait-level test: a trait is reported iff k_g > 0.  The guarantee concerns the
+    depth at which the AVERAGED curve stops rising, not the number of causal environments: when
+    orderings disagree on which environment comes next, the averaged curve can rise past the last
+    causal one.  Because each test compares the tail with depth k and not with the full-pool
+    endpoint, the cut does not depend on how many uninformative environments the pool carries.
+
+    Calibration (500 null replicates, B = 50 pairs): realized level 5.8% at gamma = 0.05 (95%
+    Wilson interval 4.1-8.2%), the default; the multiplier approximation is anti-conservative
+    further in the tail (2.8% at gamma = 0.01), where the empirical / bootstrap quantile ratio is
+    1.08-1.14 instead of 1.05.  With the causal environments forced first (partial nulls H_1-H_10,
+    370 replicates) the rejection rate was 4.6% at gamma = 0.05.
     """
     _xi = {}
 
@@ -121,10 +127,29 @@ def tail_test(gamma: float = 0.01, n_draw: int = 10000, seed: int = 20261005) ->
     return rule
 
 
-def cut_depth(c, j, gamma: float = 0.01) -> int:
+def cut_depth(c, j, gamma: float = 0.05) -> int:
     """`tail_test(gamma)` applied to a curve given as raw arrays: `c` (K+1,) and its delete-one
     jackknife `j` (K+1, J).  The convenience form used by scripts that hold saved curves."""
     return int(tail_test(gamma)(Curve(c=np.asarray(c, float), j=np.asarray(j, float))))
+
+
+def tail_pvalue(c, j, k: int = 0, n_draw: int = 10000, seed: int = 20261005) -> float:
+    """Bootstrap p-value of the tail test at depth k (k = 0: the trait-level test of GxE),
+    `p_k = Pr*(T*_k >= T_k)` from the same multiplier draws as `tail_test`, floored at 1 / n_draw.
+    Use it for multiplicity control across traits (e.g. Benjamini-Hochberg over the traits of a
+    study); it inherits the slight anti-conservatism of the multiplier bootstrap."""
+    c, Jm = np.asarray(c, float), np.asarray(j, float)
+    Jn = Jm.shape[1]
+    X = np.random.default_rng(seed).standard_normal((n_draw, Jn))
+    D = Jm[k + 1:] - Jm[k]
+    se = np.sqrt((Jn - 1) / Jn * ((D - D.mean(1, keepdims=True)) ** 2).sum(1))
+    ok = se > 0
+    if not ok.any():
+        return 1.0
+    T = np.max((c[k + 1:] - c[k])[ok] / se[ok])
+    W = np.sqrt((Jn - 1) / Jn) * (X @ (D[ok] - D[ok].mean(1, keepdims=True)).T)
+    M = np.max(W / se[ok], axis=1)
+    return max(float((M >= T).mean()), 1.0 / n_draw)
 
 
 def report(cv: Curve, k: int) -> dict:

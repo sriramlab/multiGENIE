@@ -8,7 +8,7 @@
    holding per-atom Gram tensors of the Hutchinson sketches and the per-atom phenotype terms;
 3. assemble ANY half (a union of G/2 atoms) and its complement into multi_gxe.Export objects (no genotype access);
 4. run the rule of the paper on every complementary pair, and on the average of all their held-out curves:
-   forward selection on the gain in tau, scored on the other half, sequential tail tests at gamma = 0.01,
+   forward selection on the gain in tau, scored on the other half, sequential tail tests at gamma = 0.05,
    consensus set by selection frequency (multi_gxe.complementary_split with no arguments).
 The real analysis is the same with G = 12 (462 pairs), one C++ pass per trait (atom_splits/run_atom_pass.sh), and
 atom_splits/run_pairs.py / recut_pairs.py / stability_vs_B.py on the saved pairs."""
@@ -43,4 +43,18 @@ f = np.zeros(L)
 for d in res["directions"]:
     f[list(d.path[:res["k"]])] += 1 / len(res["directions"])
 print("selection frequency in the top k_g over the 2B orderings:", {n: round(float(v), 2) for n, v in zip(names, f)})
+
+# the reported estimate: tau-hat, the held-out GxE heritability of the consensus set (atomsplit/heldout.py), and the
+# bootstrap p-value of the trait-level test (multiplicity control across traits)
+import json, tempfile
+from atomsplit.pairs import run_trait
+from atomsplit.heldout import heldout_tau
+tmp = Path(tempfile.mkdtemp()); cj = tmp / "toy.clusters.json"
+json.dump(dict(pool="toy", trait="toy", K=L, clusters=[[i] for i in range(L)], env_names=list(names)), cj.open("w"))
+run_trait(tensor, "toy", str(cj), None, str(tmp), n_pairs=None, jobs=1, paper_dir=None, log=lambda s: None)
+z = dict(np.load(tmp / "toy.pairs.npz", allow_pickle=True)); cbar, jbar = z["C"].mean(0), z["J"].mean(0)
+h = heldout_tau(tensor, z, k_g=mg.cut_depth(cbar, jbar))
+print(f"held-out tau-hat of the consensus set {h['S_hat']}: {h['tau']:.4f} +- {h['se']:.4f} "
+      f"(each refit on G/4 = {h['m']} atom(s), {h['n_subsets']} subsets); p-value of the trait-level test "
+      f"{mg.tail_pvalue(cbar, jbar):.2g}")
 print("(N = 3000 is a toy: the values are noisy; the mechanics, one pass -> every pair -> one averaged cut, are the point)")

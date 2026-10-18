@@ -77,7 +77,7 @@ def test_more_pairs_average_more_curves(folds):
 
 
 def test_defaults_are_the_method(folds):
-    assert CS.GAMMA == 0.01 and CS.GATE_RULE.gamma == 0.01 and CS.Z_GATE is None
+    assert CS.GAMMA == 0.05 and CS.GATE_RULE.gamma == 0.05 and CS.Z_GATE is None
     A, B, blocks = folds
     out = CS.complementary_split([(A, B)], blocks)
     ref = CS.complementary_split([(A, B)], blocks, gate_rule=mg.tail_test(0.01), z_gate=None)
