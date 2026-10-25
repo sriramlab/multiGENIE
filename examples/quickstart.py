@@ -6,8 +6,9 @@
 `multi_gxe.simulate` draws two half-sample normal-equation exports around one truth (the real schema,
 so the same code runs on engine exports).  `mg.complementary_split` with no arguments is the method: forward selection on the gain in the GxE heritability tau(S) on one half, the ordering
 scored on the other half, both directions averaged, the cut k_g by the sequential tail tests at
-gamma = 0.01, a trait reported iff k_g > 0, and the reported environments the k_g with the highest
-selection frequency across the orderings.  No clustering: every environment is its own unit."""
+gamma = 0.05, and the reported environments the k_g with the highest selection frequency across the
+orderings.  In a study, whether a trait has GxE at all is decided across traits by the simulation-based
+test (multi_gxe.nulltest).  No clustering: every environment is its own unit."""
 import sys
 from pathlib import Path
 
@@ -44,7 +45,7 @@ def main() -> None:
     c_in, j_in = mg.curve(evA, [[int(b)] for b in pathA])
     cv_in = mg.Curve(c=np.asarray(c_in), j=np.asarray(j_in))
     print(f"\nno complementary split (ordering scored on the half that grew it): "
-          f"k = {mg.tail_test(0.01)(cv_in)}, in-sample c(k_g) = {c_in[r['k']]:.4f} against the held-out {r['tau']:.4f}; "
+          f"k = {mg.tail_test(0.05)(cv_in)}, in-sample c(k_g) = {c_in[r['k']]:.4f} against the held-out {r['tau']:.4f}; "
           f"on a null curve the in-sample version is reported nearly always.")
 
 

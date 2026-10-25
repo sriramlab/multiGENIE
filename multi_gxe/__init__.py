@@ -28,9 +28,9 @@ from .stopping import Curve, StopRule, tail_test, tail_pvalue, cut_depth, report
 from .crossfit import direction, Direction
 from .compsplit import (complementary_split, select_from_curves, average_curves,
                         consensus)
-from . import simulate, compsplit
+from . import simulate, compsplit, nulltest
 
-__version__ = "1.1.0"
+__version__ = "2.0.0"
 
 __all__ = [
     "Export", "System", "load_export", "drop_envs", "select_indices",

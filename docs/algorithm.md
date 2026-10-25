@@ -86,7 +86,8 @@ hypothesis not rejected, `k_g = min{k : T_k < q_k(gamma)}`, with `k_g = L` if ev
 rejected (eq. cut). The hypotheses are nested (`H_k` true implies `H_{k+1}` true), so no
 multiplicity correction is needed: the procedure reaches a true hypothesis only after rejecting
 the first true one, which happens with probability at most `gamma`, and the family-wise error is
-at most `gamma`. `H_0` is the trait-level test; a trait is reported iff `k_g > 0`. The target of
+at most `gamma`. `H_0` is the test of GxE, decided by simulation (below); for a reported trait, the
+depth is the first `k >= 1` whose test is not rejected. The target of
 each test is the averaged curve, so the guarantee concerns the depth at which that curve stops
 rising, not the number of causal environments: when orderings disagree on which environment comes
 next, the averaged curve can rise past the last causal one and the cut legitimately goes deeper.
@@ -100,12 +101,24 @@ centred over blocks and `xi ~ N(0, I_J)`,
     T*_k = max_{k' > k} sqrt((J-1)/J) sum_j xi_j d_(j)(k,k') / se( c_bar(k') - c_bar(k) )
 
 (eq. multiplier), each term of unit variance given the data; `q_k(gamma)` is its upper-`gamma`
-quantile over `10^4` draws, and one draw of `xi` serves every depth and every trait. The
-approximation is anti-conservative in the far tail on `J = 100` blocks: on 500 null replicates the
-realized level was 5.8% at the default `gamma = 0.05` (95% Wilson interval 4.1-8.2%) but 2.8% at
-`gamma = 0.01`, where the empirical null quantile of `T_0` exceeds the bootstrap one by 8-14%
-(5% at 0.05). The bootstrap p-value of the trait-level test, `p_0 = Pr*(T*_0 >= T_0)` from the same
-draws, supports multiplicity control across traits. Code: `stopping.tail_test`, `stopping.tail_pvalue`.
+quantile over `10^4` draws, and one draw of `xi` serves every depth and every trait. Code:
+`stopping.tail_test`, `stopping.tail_pvalue`.
+
+**The test of GxE.** The bootstrap holds the orderings fixed. That is accurate for one ordering
+scored on its own held-out half, but the averaged curve combines orderings grown on individuals
+who score other orderings, and the bootstrap p-value of `H_0` on the average is anti-conservative.
+`H_0` is therefore tested against null phenotypes simulated from the trait's own model without
+GxE (eq. nullpheno): an additive genetic term with the trait's heritability, on a set of causal
+SNPs drawn afresh for each null phenotype, plus noise whose variance follows the trait's fitted
+residual variance as a function of the environments (a gamma regression with log link of the
+squared residualized phenotype on the environments). Each null phenotype is analysed exactly as
+the trait; with `p*_1, ..., p*_R` their bootstrap p-values of `H_0` and `p_0` the trait's,
+
+    p_MC = (1 + #{p*_r <= p_0}) / (R + 1)
+
+(eq. pmc), with `R = 100`, extended to 300 when fewer than 10 null p-values are as small as `p_0`.
+Across traits, traits are reported at a Benjamini-Hochberg false discovery rate of 5% on `p_MC`.
+Code: `nulltest`.
 
 **The reported estimate.** Refitting the consensus set on the halves is not held out: the set is
 chosen from all `2B` orderings and every individual sits on the growing side of some pair. The

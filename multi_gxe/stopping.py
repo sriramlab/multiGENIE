@@ -136,8 +136,10 @@ def cut_depth(c, j, gamma: float = 0.05) -> int:
 def tail_pvalue(c, j, k: int = 0, n_draw: int = 10000, seed: int = 20261005) -> float:
     """Bootstrap p-value of the tail test at depth k (k = 0: the trait-level test of GxE),
     `p_k = Pr*(T*_k >= T_k)` from the same multiplier draws as `tail_test`, floored at 1 / n_draw.
-    Use it for multiplicity control across traits (e.g. Benjamini-Hochberg over the traits of a
-    study); it inherits the slight anti-conservatism of the multiplier bootstrap."""
+    At k = 0 this is the trait's statistic for the test of GxE: rank it against the same statistic
+    on null phenotypes (`nulltest.mc_pvalue`) before multiplicity control across traits
+    (`nulltest.benjamini_hochberg`); on its own it inherits the anti-conservatism of the
+    multiplier bootstrap on the averaged curve."""
     c, Jm = np.asarray(c, float), np.asarray(j, float)
     Jn = Jm.shape[1]
     X = np.random.default_rng(seed).standard_normal((n_draw, Jn))
