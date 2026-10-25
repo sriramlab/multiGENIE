@@ -1,7 +1,7 @@
-# EXPOSE: EXPOsome Selection and Estimation
+# TIMBRE: Trait Interactions with Multiple environments By held-out Ranking and Estimation
 
 Biobanks measure dozens of environments on the same genotyped individuals. For a given trait,
-EXPOSE asks **which** of these environments interact with genetic effects (GxE), **how many**
+TIMBRE asks **which** of these environments interact with genetic effects (GxE), **how many**
 there are, and **how much** GxE heritability they carry together: the trait's *exposome
 architecture*.
 

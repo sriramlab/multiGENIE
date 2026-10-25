@@ -30,7 +30,7 @@ from .compsplit import (complementary_split, select_from_curves, average_curves,
                         consensus)
 from . import simulate, compsplit, nulltest
 
-__version__ = "2.0.0"
+__version__ = "2.1.0"
 
 __all__ = [
     "Export", "System", "load_export", "drop_envs", "select_indices",

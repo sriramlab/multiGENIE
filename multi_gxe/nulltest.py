@@ -3,7 +3,7 @@
 The multiplier bootstrap of `stopping.tail_test` holds the orderings fixed. For one direction (an ordering grown on
 one half and scored on the other) that is accurate, but the averaged curve combines orderings grown on individuals who
 score other orderings, and the bootstrap p-value of H_0 on the average is anti-conservative (5.8% at 0.05 on 500 null
-replicates). EXPOSE therefore tests H_0 against null phenotypes simulated from the trait's own fitted model without GxE:
+replicates). TIMBRE therefore tests H_0 against null phenotypes simulated from the trait's own fitted model without GxE:
 
     y*_i = sum_{m in C} x_im beta_m + e*_i,     e*_i ~ N(0, sigma_i^2 - h2),
 

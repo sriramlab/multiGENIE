@@ -3,9 +3,9 @@ requires = ["setuptools>=61"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "expose-gxe"
-version = "2.0.0"
-description = "EXPOSE (EXPOsome Selection and Estimation): which environments carry a trait's gene-environment interaction, and how much"
+name = "timbre-gxe"
+version = "2.1.0"
+description = "TIMBRE (Trait Interactions with Multiple environments By held-out Ranking and Estimation): which environments carry a trait's gene-environment interaction, and how much"
 readme = "README.md"
 requires-python = ">=3.9"
 dependencies = ["numpy>=1.21", "scipy>=1.7"]
