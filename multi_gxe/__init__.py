@@ -28,11 +28,13 @@ from .stopping import Curve, StopRule, tail_test, tail_pvalue, cut_depth, report
 from .crossfit import direction, Direction
 from .compsplit import (complementary_split, select_from_curves, average_curves,
                         consensus)
-from . import simulate, compsplit, nulltest
+from . import simulate, compsplit, nulltest, h0test
+from .h0test import marginal_h0, marginal_wald, acat
 
 __version__ = "2.1.0"
 
 __all__ = [
+    "marginal_h0", "marginal_wald", "acat",
     "Export", "System", "load_export", "drop_envs", "select_indices",
     "slice_system", "solve", "component_h2", "fit_subset", "jk_se",
     "nxe_identity_cos", "drop_degenerate_nxe", "NXE_IDENTITY_COS",

@@ -71,7 +71,7 @@ class Curve:
 StopRule = Callable[[Curve], int]
 
 
-def tail_test(gamma: float = 0.05, n_draw: int = 10000, seed: int = 20261005) -> StopRule:
+def tail_test(gamma: float = 0.05, n_draw: int = 10000, seed: int = 20261005, start: int = 0) -> StopRule:
     """THE RULE OF THE PAPER: sequential tail tests on the averaged held-out curve.
 
     For each depth k = 0, 1, ... test H_k: "no depth past k is higher than k" with the
@@ -98,6 +98,9 @@ def tail_test(gamma: float = 0.05, n_draw: int = 10000, seed: int = 20261005) ->
     further in the tail (2.8% at gamma = 0.01), where the empirical / bootstrap quantile ratio is
     1.08-1.14 instead of 1.05.  With the causal environments forced first (partial nulls H_1-H_10,
     370 replicates) the rejection rate was 4.6% at gamma = 0.05.
+
+    `start = 1` skips H_0: the trait-level test is then made separately on the full sample
+    (`h0test.marginal_h0`), and for a trait that passes it the cut is the first k >= 1 not rejected.
     """
     _xi = {}
 
@@ -111,7 +114,7 @@ def tail_test(gamma: float = 0.05, n_draw: int = 10000, seed: int = 20261005) ->
         K = len(c) - 1
         J = Jm.shape[1]
         X = xi(J)
-        for k in range(K):
+        for k in range(min(start, K), K):
             D = Jm[k + 1:] - Jm[k]                                   # (K-k, J) delete-one differences
             se = np.sqrt((J - 1) / J * ((D - D.mean(1, keepdims=True)) ** 2).sum(1))
             dm = c[k + 1:] - c[k]
@@ -124,13 +127,15 @@ def tail_test(gamma: float = 0.05, n_draw: int = 10000, seed: int = 20261005) ->
                 return k
         return K
     rule.gamma = gamma
+    rule.start = start
     return rule
 
 
-def cut_depth(c, j, gamma: float = 0.05) -> int:
-    """`tail_test(gamma)` applied to a curve given as raw arrays: `c` (K+1,) and its delete-one
-    jackknife `j` (K+1, J).  The convenience form used by scripts that hold saved curves."""
-    return int(tail_test(gamma)(Curve(c=np.asarray(c, float), j=np.asarray(j, float))))
+def cut_depth(c, j, gamma: float = 0.05, start: int = 0) -> int:
+    """`tail_test(gamma, start=start)` applied to a curve given as raw arrays: `c` (K+1,) and its
+    delete-one jackknife `j` (K+1, J).  The convenience form used by scripts that hold saved curves;
+    `start=1` is the depth of a trait whose H_0 was rejected on the full sample (`h0test`)."""
+    return int(tail_test(gamma, start=start)(Curve(c=np.asarray(c, float), j=np.asarray(j, float))))
 
 
 def tail_pvalue(c, j, k: int = 0, n_draw: int = 10000, seed: int = 20261005) -> float:

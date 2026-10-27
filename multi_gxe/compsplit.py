@@ -8,7 +8,10 @@ THE ALGORITHM, for B complementary pairs (A_s, B_s):
     c_bar(k) = mean of the 2B curves at each depth             (jackknife: block-wise mean)
     k_g      = tail_test(gamma)(c_bar): the first depth past which no later depth is
                significantly higher, family-wise error at most gamma            gamma = 0.05
-    the trait is REPORTED iff k_g > 0                          (H_0, the trait-level test)
+    the trait is REPORTED iff H_0 is rejected: ACAT of the marginal one-sided Wald p-values
+               of the environments on the FULL sample (h0test.marginal_h0), BH across traits;
+               then k_g = the first k >= 1 not rejected by the tail tests
+               (without an H_0 decision: reported iff k_g > 0, the previous rule)
     tau      = c_bar(k_g)                                      with its paired jackknife SE
     the reported environments are the k_g with the highest selection frequency in the
     top k_g of the 2B orderings, ties by mean position
@@ -86,17 +89,25 @@ def consensus(paths: Sequence[Sequence[int]], k: int, how: str = "freq") -> List
 
 def select_from_curves(curves: Sequence[Curve], paths: Sequence[Sequence[int]], *,
                        gate_rule: StopRule = GATE_RULE, z_gate: Optional[float] = Z_GATE,
-                       rank: str = "freq") -> Dict[str, Any]:
+                       rank: str = "freq", h0_reject: Optional[bool] = None) -> Dict[str, Any]:
     """The whole decision, as a pure function of the 2B held-out curves and their paths.
 
     `curves[i]` must be the held-out curve of `paths[i]`.  This is what a calibration
     run calls inside every null or permutation replicate.
+
+    `h0_reject` is the trait-level decision made on the full sample (`h0test.marginal_h0`
+    followed by BH across traits).  When given, it alone decides whether the trait is
+    reported, and the depth of a reported trait is cut by the tail tests from k = 1 on.
     """
     if len(curves) != len(paths):
         raise ValueError("one path per curve")
     M = average_curves(curves)
     K = M.K
-    k_g = int(gate_rule(M))
+    if h0_reject is not None:
+        k_g = int(tail_test(getattr(gate_rule, "gamma", GAMMA), start=1)(M)) if h0_reject else 0
+        z_gate = None
+    else:
+        k_g = int(gate_rule(M))
     se = M.se_at(k_g) if k_g > 0 else 0.0
     z = float(M.c[k_g] / se) if se > 0 else float("nan")
     names = bool(k_g > 0) if z_gate is None else bool(k_g > 0 and se > 0 and z >= z_gate)
@@ -110,9 +121,12 @@ def complementary_split(pairs: Sequence[Tuple[Export, Export]],
                         gate_rule: StopRule = GATE_RULE, z_gate: Optional[float] = Z_GATE,
                         rank: str = "freq",
                         order: str = "dtau",
-                        evaluators: Optional[Sequence[Tuple[Evaluator, Evaluator]]] = None
-                        ) -> Dict[str, Any]:
+                        evaluators: Optional[Sequence[Tuple[Evaluator, Evaluator]]] = None,
+                        h0_reject: Optional[bool] = None) -> Dict[str, Any]:
     """Run the algorithm on B complementary pairs of exports.
+
+    `h0_reject` is the trait-level decision made on the full sample (`h0test.marginal_h0`, then
+    Benjamini-Hochberg across traits); see `select_from_curves`.
 
     `pairs[s] = (export_A_s, export_B_s)`, the two halves of the s-th split.  B = 1
     is one split.  `blocks` groups environments into units of selection; the paper uses
@@ -133,6 +147,6 @@ def complementary_split(pairs: Sequence[Tuple[Export, Export]],
         dirs.append(direction(A, B, blocks, ev_grow=evA, ev_eval=evB, **kw))
         dirs.append(direction(B, A, blocks, ev_grow=evB, ev_eval=evA, **kw))
     out = select_from_curves([d.curve for d in dirs], [d.path for d in dirs],
-                             gate_rule=gate_rule, z_gate=z_gate, rank=rank)
+                             gate_rule=gate_rule, z_gate=z_gate, rank=rank, h0_reject=h0_reject)
     out.update(B=len(pairs), directions=dirs)
     return out

@@ -64,11 +64,17 @@ def make_corr(block_sizes: Sequence[int] = (3, 2, 1, 1, 1, 1, 1, 1, 1, 1),
     return corr, blocks
 
 
-def _psd_from_corr(corr: np.ndarray, has_nxe: bool, ridge: float) -> np.ndarray:
+def _psd_from_corr(corr: np.ndarray, has_nxe: bool, ridge: float, trace_base: float = 0.0) -> np.ndarray:
     """Cross-component structure for the trace matrix `tr(K_i K_j)`.
 
     G is taken as weakly correlated with everything; the G x E components inherit
     the environment correlation; each N x E component tracks its own G x E term.
+
+    `trace_base` (2026-10-27) lifts every off-diagonal entry to `trace_base + (1 - trace_base) * v`.
+    Genomic kernels share the genome, so tr(K_i K_j) is of the order of tr(K_i) even for unrelated
+    environments; with the default 0 a sub-model that omits a causal component pushes the omitted
+    variance into the noise term and the retained GxE term downwards, which biases MARGINAL
+    (one-environment) fits.  0.25 reproduces the real behaviour; the default keeps the earlier toys.
     """
     L = corr.shape[0]
     n = 1 + L + (L if has_nxe else 0)
@@ -79,6 +85,8 @@ def _psd_from_corr(corr: np.ndarray, has_nxe: bool, ridge: float) -> np.ndarray:
         V[1 + L:, 1 + L:] = corr
         V[1:1 + L, 1 + L:] = V[1 + L:, 1:1 + L] = 0.30 * corr
         V[0, 1 + L:] = V[1 + L:, 0] = 0.05
+    if trace_base:
+        off = ~np.eye(n, dtype=bool); V[off] = trace_base + (1.0 - trace_base) * V[off]
     w, U = np.linalg.eigh(V)
     V = U @ np.diag(np.clip(w, 1e-8, None)) @ U.T
     return V + ridge * np.eye(n)
@@ -89,7 +97,7 @@ def simulate_export(corr: np.ndarray, h2_gxe: Sequence[float], *,
                     se: float = 0.004, n_jack: int = N_JACK,
                     n_indiv: int = N_INDIV, model: str = "G+GxE+NxE",
                     seed: int = 0, env_names: Optional[Sequence[str]] = None,
-                    ridge: float = 0.35) -> Export:
+                    ridge: float = 0.35, trace_base: float = 0.0) -> Export:
     """One export drawn around a truth.
 
     `h2_gxe` is the per-environment truth, one entry per column of `corr`; `se`
@@ -120,7 +128,7 @@ def simulate_export(corr: np.ndarray, h2_gxe: Sequence[float], *,
     n = sigma.size - 1
 
     # trace matrix: tr(K_i) = N for every kernel, so component_h2 is sigma / sum
-    V = _psd_from_corr(corr, has_nxe, ridge)
+    V = _psd_from_corr(corr, has_nxe, ridge, trace_base)
     scale = float(n_indiv) * 4.0
     x_l = np.empty((n + 1, n + 1))
     x_l[:n, :n] = scale * V

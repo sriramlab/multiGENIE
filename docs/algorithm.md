@@ -107,18 +107,18 @@ quantile over `10^4` draws, and one draw of `xi` serves every depth and every tr
 **The test of GxE.** The bootstrap holds the orderings fixed. That is accurate for one ordering
 scored on its own held-out half, but the averaged curve combines orderings grown on individuals
 who score other orderings, and the bootstrap p-value of `H_0` on the average is anti-conservative.
-`H_0` is therefore tested against null phenotypes simulated from the trait's own model without
-GxE (eq. nullpheno): an additive genetic term with the trait's heritability, on a set of causal
-SNPs drawn afresh for each null phenotype, plus noise whose variance follows the trait's fitted
-residual variance as a function of the environments (a gamma regression with log link of the
-squared residualized phenotype on the environments). Each null phenotype is analysed exactly as
-the trait; with `p*_1, ..., p*_R` their bootstrap p-values of `H_0` and `p_0` the trait's,
+`H_0` is therefore tested on the full sample, where no selection has taken place. For every
+environment `l`, the marginal model (the additive component, the GxE and NxE components of `l`, and
+the noise) is a slice of the full-sample normal equations; `z_l = tau_l / se(tau_l)` with the
+delete-one-block jackknife SE is referred to a `t` distribution with `J - 1` degrees of freedom
+(one-sided), and the `L` p-values are combined by the Cauchy combination test (Liu and Xie 2020),
 
-    p_MC = (1 + #{p*_r <= p_0}) / (R + 1)
+    T = (1/L) sum_l tan((1/2 - p_l) pi),    p_H0 = 1/2 - arctan(T) / pi
 
-(eq. pmc), with `R = 100`, extended to 300 when fewer than 10 null p-values are as small as `p_0`.
-Across traits, traits are reported at a Benjamini-Hochberg false discovery rate of 5% on `p_MC`.
-Code: `nulltest`.
+(eq. acat), whose tail is standard Cauchy whatever the dependence among the `p_l`. Across traits,
+traits are reported at a Benjamini-Hochberg false discovery rate of 5% on `p_H0`; for a reported
+trait the tail tests run from depth 1. Code: `h0test` (`nulltest` keeps the earlier simulation-based
+test for reference).
 
 **The reported estimate.** Refitting the consensus set on the halves is not held out: the set is
 chosen from all `2B` orderings and every individual sits on the growing side of some pair. The
