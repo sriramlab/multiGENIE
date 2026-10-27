@@ -1,7 +1,7 @@
-# TIMBRE: Trait Interactions with Multiple environments By held-out Ranking and Estimation
+# multiGENIE: the exposome architecture of gene-environment interaction
 
 Biobanks measure dozens of environments on the same genotyped individuals. For a given trait,
-TIMBRE asks **which** of these environments interact with genetic effects (GxE), **how many**
+multiGENIE asks **which** of these environments interact with genetic effects (GxE), **how many**
 there are, and **how much** GxE heritability they carry together: the trait's *exposome
 architecture*.
 
@@ -20,8 +20,10 @@ The Python package is imported as `multi_gxe`.
 3. **Average many splits.** Hundreds of complementary splits are assembled from a single pass
    over the genotypes and their held-out curves are averaged, which stabilizes both the curve and
    the chosen environments.
-4. **Test, then cut.** Whether the trait has any GxE is tested against null phenotypes simulated
-   from the trait's own fitted model without GxE, and across traits, traits are reported at a
+4. **Test, then cut.** Whether the trait has any GxE is tested on the full sample: for every
+   environment, the GxE heritability of its marginal model (a slice of the same normal equations)
+   divided by its jackknife standard error gives a one-sided `t` p-value, and the `L` p-values are
+   combined by the Cauchy combination test. Across traits, traits are reported at a
    Benjamini--Hochberg false discovery rate. For a reported trait, sequential tail tests find the
    depth `k_g` at which the averaged curve stops rising.
 5. **Report.** The `k_g` environments chosen most often across splits, their GxE heritability
@@ -43,10 +45,12 @@ python -m pytest tests -q        # unit tests
 python examples/quickstart.py
 ```
 
-It simulates 12 environments, two of which carry GxE, and runs one complementary split:
+It simulates 12 environments, two of which carry GxE, tests the trait-level hypothesis on the
+full-sample system, and runs one complementary split:
 
 ```
-reported = True   k_g = 2   tau = 0.0700 +- 0.0140   full-pool value c(L) = 0.0609
+trait-level test: p_H0 = 8.42e-89 (Cauchy combination of 12 marginal t-tests; smallest p at env_0)
+reported = True   k_g = 2   tau = 0.0635 +- 0.0027   full-pool value c(L) = 0.0628
 reported set (selection frequency in the top k_g, ties by mean position): [0, 5]
 ```
 
@@ -79,27 +83,20 @@ by summation. `atom_splits/README.md` is the runbook for real data.
 
 ### Is there GxE? Testing across traits
 
-A trait's test statistic is compared with the same statistic on null phenotypes simulated from
-the trait's own model without GxE (`multi_gxe.nulltest`):
+The trait-level hypothesis is tested on the full-sample export (all individuals), not on the
+held-out curves: the marginal GxE test of every environment, combined by the Cauchy combination
+test (`multi_gxe.h0test`), then Benjamini--Hochberg across traits.
 
 ```python
-from multi_gxe import nulltest as nt
+h0 = mg.marginal_h0(full_export)       # p: the combined p-value; env_z, env_p: the marginal statistics
+q = mg.nulltest.benjamini_hochberg([h0_of_trait["p"] for h0_of_trait in per_trait])   # report q < 0.05
 
-v, _ = nt.residual_variance_model(y_resid, E)        # residual variance as a function of the environments
-Y0 = nt.null_phenotypes(read_block, n_snps, n, h2=h2_hat, v=v, reps=range(100), trait="bmi")
-# analyse each column of Y0 exactly as the trait, keeping each null's p-value in p_null
-
-p0 = mg.stopping.tail_pvalue(r["curve"].c, r["curve"].j)           # the trait's own statistic
-p_mc = nt.mc_pvalue(p0, p_null)                                      # (1 + #{p_null <= p0}) / (R + 1)
-if nt.needs_more_nulls(p0, p_null):                                  # fewer than 10 nulls as small as p0
-    ...                                                              # draw 200 more: reps=range(100, 300)
-
-q = nt.benjamini_hochberg(p_mc_over_traits)                          # report the traits with q < 0.05
+r = mg.complementary_split(pairs, h0_reject=bool(q[i] < 0.05))   # depth from k = 1 when H_0 is rejected
 ```
 
-`read_block(a, b)` returns the standardized genotypes of SNPs `a` to `b - 1` for the analysed
-individuals; `atom_splits/atomsplit/qpass.py` computes the phenotype terms of many null
-phenotypes in one pass over the genotypes.
+No simulation and no sample split are needed for this step; its calibration on simulated null
+phenotypes, including null phenotypes drawn from each trait's own fitted model, is reported in the
+paper. The earlier simulation-based test is kept in `multi_gxe.nulltest` for reference.
 
 ## The pieces
 
@@ -109,7 +106,7 @@ phenotypes in one pass over the genotypes.
 | forward selection; one split (grow on one half, score on the other) | `multi_gxe/grow.py`, `multi_gxe/crossfit.py` |
 | averaging many splits; the reported environments | `multi_gxe/compsplit.py` |
 | the tail tests that set the depth `k_g` | `multi_gxe/stopping.py` |
-| the test of GxE against simulated null phenotypes; Benjamini--Hochberg across traits | `multi_gxe/nulltest.py` |
+| the trait-level test of GxE (marginal Wald statistics, Cauchy combination); Benjamini--Hochberg across traits | `multi_gxe/h0test.py`, `multi_gxe/nulltest.py` |
 | the held-out GxE heritability of the reported set; `n_eff` | `atom_splits/atomsplit/heldout.py` |
 | many complementary splits from one genotype pass | `atom_splits/` |
 | simulated inputs for tests and examples | `multi_gxe/simulate.py` |
