@@ -1,7 +1,7 @@
 """Phenotype terms ONLY (qg_full, qg_blk, qdiag) for P phenotypes in ONE genotype pass.
 
 `atom_pass` builds the whole tensor; a phenotype that shares a tensor's rows, covariates, environments and atoms
-needs only its q terms, which `sim_q_pass.py` has so far obtained by running the full two-pass `atom_pass` with one
+needs only its q terms, which has so far been obtained by running the full two-pass `atom_pass` with one
 dummy probe and discarding the rest (pass 2, the probe columns of pass 1 and S_full are wasted work).  Here, per SNP
 block j and phenotype p,
 

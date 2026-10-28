@@ -11,7 +11,7 @@
    forward selection on the gain in tau, scored on the other half, sequential tail tests at gamma = 0.05,
    consensus set by selection frequency (multi_gxe.complementary_split with no arguments).
 The real analysis is the same with G = 12 (462 pairs), one C++ pass per trait (atom_splits/run_atom_pass.sh), and
-atom_splits/run_pairs.py / recut_pairs.py / stability_vs_B.py on the saved pairs."""
+atom_splits/run_pairs.py / recut_pairs.py on the saved pairs."""
 import sys, time
 from pathlib import Path
 import numpy as np

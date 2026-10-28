@@ -37,10 +37,8 @@ environment matrix and the phenotype scale are those of the full analysed sample
 | `atomsplit/atoms.py`, `make_atoms.py`, `folds.py` | A | the two halves, and `G` atoms refining them |
 | `atomsplit/stream.py`, `run_atom_pass.py`, `run_atom_pass.sh` | B | the two passes → `<trait>.atoms.G12.npz` |
 | `atomsplit/tensor.py`, `assemble_export.py` | C | `AtomTensor.assemble(atoms) -> Export`; JSON in the engine's schema |
-| `atomsplit/pairs.py`, `run_pairs.py`, `run_pairs_raw.sh` | D | every pair; each curve, jackknife and ordering saved to `<trait>.pairs.npz` |
-| `recut_pairs.py`, `stability_vs_B.py`, `atom_results_tables.py` | — | any rule re-applied to the saved curves; stability against the number of pairs; tables |
-| `plot_atom_vs_single.py`, `plot_atom_curve_grid.py`, `plot_stability_vs_B.py`, `plot_atom_pairs.py` | — | figures |
-| `sim_q_pass.py`, `run_pairs_sim.py`, `score_atom_sims.py` | — | calibration of the many-pair layout |
+| `atomsplit/pairs.py`, `run_pairs.py`, `run_pairs.sh` | D | every pair; each curve, jackknife and ordering saved to `<trait>.pairs.npz` |
+| `recut_pairs.py`, `run_heldout.py` | — | any rule re-applied to the saved curves; the held-out estimate of the reported set |
 | `atomsplit/dense.py`, `validate_v1.py`, `validate_v2.py`, `validate_backend.py`, `tests/` | V | exactness against dense kernels, against the engine, and the C++ backend |
 | `engine_backend/` | — | the two passes in C++, as a patch to the engine |
 
@@ -63,20 +61,14 @@ $PY atom_splits/make_atoms.py --G 12 --seed 20260928 -o data/atoms.G12.tsv
 # B: two streaming passes per trait (hours on 8 cores; the C++ backend with --backend engine)
 qsub -t 1-<n traits> -v TRAITS_FILE=<list>,ATOMS=data/atoms.G12.tsv,BACKEND=engine atom_splits/run_atom_pass.sh
 # D: every pair through the method; the tensor can be deleted afterwards (DELETE_TENSOR=1)
-qsub -t 1-<n traits> -v TRAITS_FILE=<list>,POOL=raw84 atom_splits/run_pairs_raw.sh
+qsub -t 1-<n traits> -v TRAITS_FILE=<list> atom_splits/run_pairs.sh
 # anything downstream reads <trait>.pairs.npz only: no refits
 $PY atom_splits/recut_pairs.py --trait bmi --res <results dir>        # the cut on the averaged curve
-$PY atom_splits/stability_vs_B.py --trait bmi --results <results dir> # disjoint groups of B pairs
-$PY atom_splits/atom_results_tables.py                                # tables over all traits
+$PY atom_splits/run_heldout.py --trait bmi ...                         # the held-out estimate of the reported set
 ```
 
 The job scripts carry the absolute paths of the machine the paper was run on; read them as a
 runbook and adapt the five paths at the top.
-
-**Calibration of the layout.** The trace terms of a tensor are phenotype-free, so one real trait's
-tensor serves every simulated phenotype on those individuals: `sim_q_pass.py` computes a replicate's
-phenotype terms with a single one-probe pass, `run_pairs_sim.py` assembles the 462 pairs from the
-two, and `score_atom_sims.py` applies the rule. `examples/null100/` packages this end to end.
 
 ## The C++ backend (`--backend engine`)
 
