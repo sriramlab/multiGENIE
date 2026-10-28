@@ -120,4 +120,5 @@ Python >= 3.9, numpy and scipy. The genotype passes of `atom_splits/` also need 
 
 ## Citation
 
-Manuscript in preparation. Until then, please cite this repository.
+Manuscript in preparation: *multiGENIE reveals the exposome architecture of gene--environment
+interaction at biobank scale*. Until it appears, please cite this repository.
