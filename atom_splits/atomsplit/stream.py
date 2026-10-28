@@ -28,7 +28,7 @@ from .tensor import AtomTensor
 
 
 def jk_bounds(M: int, J: int) -> np.ndarray:
-    """the engine scheme 1: bounds[j] = j * M // J."""
+    """The engine's block scheme: bounds[j] = j * M // J."""
     return np.array([(j * M) // J for j in range(J + 1)], dtype=np.int64)
 
 
@@ -39,26 +39,17 @@ def _fmt(sec: float) -> str:
 def atom_pass(design: Design, reader, *, n_probes: int = 10, seed: int = 0, n_jk: int = 100,
               snp_block: int = 2048, dtype=np.float32, keep_sketch: bool = True,
               cache_uall: bool = True, max_snps: Optional[int] = None, gram_dtype=np.float32,
-              backend: str = "numpy",
               log: Optional[Callable[[str], None]] = print) -> AtomTensor:
     """Run both passes.
 
-    backend="numpy": `reader.read(a, b)` -> int8 (N, b-a) codes (bedio.BedBlockReader /
-    ArrayBlockReader); decoding, standardisation and GEMMs in numpy.
-    backend="engine":  `reader` is an `engine.EngineEngine`; the C++ passes' C++ does the genotype
-    passes (its own BEDReader, Eigen + OpenMP) on the same numpy buffers.  `dtype` and
-    `gram_dtype` are then the engine's REAL_DTYPE and `cache_uall` is implied.
+    `reader.read(a, b)` -> int8 (N, b-a) codes (bedio.BedBlockReader / ArrayBlockReader);
+    decoding, standardisation and GEMMs in numpy.
 
     `dtype` is the pipeline precision (genotypes, sketches, GEMMs); `gram_dtype` is the
     STORAGE precision of the per-block Grams Gb1/Gb2 (float32 halves the tensor file and
     perturbs the delete-one systems at ~1e-7 of |T|, i.e. ~1e-5 of the jackknife deltas)."""
     log = log or (lambda s: None)
     t0 = time.time()
-    if backend not in ("numpy", "engine"):
-        raise ValueError("backend must be 'numpy' or 'engine'")
-    if backend == "engine":
-        dtype = gram_dtype = np.dtype(reader.real).type
-        cache_uall = True
     N, L, G = design.N, design.L, design.G
     B, B1 = int(n_probes), int(n_probes) + 1
     Ps, Pd, Pa = design.P_snp, design.P_diag, design.P_all
@@ -117,11 +108,7 @@ def atom_pass(design: Design, reader, *, n_probes: int = 10, seed: int = 0, n_jk
     U2 = np.zeros((N, B * Ks), dtype=dtype)
     qg_blk = np.zeros((J, Ps, G, G))
     Sstore = np.empty((M, B1 * Ks), dtype=dtype) if keep_sketch else None
-    if backend == "engine":
-        qg2 = np.zeros((J, Ps * G * G))
-        reader.pass1(bounds, snp_block, Cin, B, Ps, G, M, U2, qg2, Sstore, verbose=bool(log))
-        qg_blk[:] = qg2.reshape(J, Ps, G, G)
-    for j in (range(J) if backend == "numpy" else ()):
+    for j in range(J):
         for a in range(bounds[j], bounds[j + 1], snp_block):
             b = min(a + snp_block, bounds[j + 1])
             tr = time.time()
@@ -170,21 +157,8 @@ def atom_pass(design: Design, reader, *, n_probes: int = 10, seed: int = 0, n_jk
     Gb1 = np.zeros((J, G, Ks, Ka), dtype=gram_dtype)
     Gb2 = np.zeros((J, G, Ks, Ks), dtype=gram_dtype)
     t_read = t_x = t_gram = 0.0
-    if backend == "engine":
-        # [U | diag] rows atom by atom, as the C++ expects
-        atom_order = np.concatenate(rows).astype(np.int64)
-        atom_offsets = np.concatenate([[0], np.cumsum([len(r) for r in rows])]).astype(np.int64)
-        F_sorted = np.empty((N, B, Ka), dtype=dtype)
-        for g in range(G):
-            F_sorted[atom_offsets[g]:atom_offsets[g + 1]] = uall_cache[g].transpose(1, 0, 2)
-        F_sorted = F_sorted.reshape(N, B * Ka)
-        del uall_cache
-        reader.pass2(bounds, snp_block, None if keep_sketch else Cin, Sstore, B, Ps, G, M,
-                     np.ascontiguousarray(e_snp), W, Q, 1.0 / M, atom_order, atom_offsets, F_sorted,
-                     Gb1, Gb2, verbose=bool(log))
-        log(f"[pass 2] done {_fmt(time.time() - t2)}; total {_fmt(time.time() - t0)}")
-    Uj2 = np.empty((N, B * Ks), dtype=dtype) if backend == "numpy" else None
-    for j in (range(J) if backend == "numpy" else ()):
+    Uj2 = np.empty((N, B * Ks), dtype=dtype)
+    for j in range(J):
         Uj2[:] = 0
         for a in range(bounds[j], bounds[j + 1], snp_block):
             b = min(a + snp_block, bounds[j + 1])
@@ -219,10 +193,9 @@ def atom_pass(design: Design, reader, *, n_probes: int = 10, seed: int = 0, n_jk
         if log and (j % max(1, J // 10) == 0 or j == J - 1):
             log(f"[pass 2] block {j + 1}/{J}  read+std {_fmt(t_read)}  X S {_fmt(t_x)}  "
                 f"grams {_fmt(t_gram)}  elapsed {_fmt(time.time() - t2)}")
-    if backend == "numpy":
-        log(f"[pass 2] done {_fmt(time.time() - t2)}; total {_fmt(time.time() - t0)}")
+    log(f"[pass 2] done {_fmt(time.time() - t2)}; total {_fmt(time.time() - t0)}")
 
-    meta = dict(backend=backend, trait=design.trait, seed=int(seed), dtype=np.dtype(dtype).name,
+    meta = dict(backend="numpy", trait=design.trait, seed=int(seed), dtype=np.dtype(dtype).name,
                 gram_dtype=np.dtype(gram_dtype).name, N=N, M=M,
                 n_cov=int(design.n_cov), used_pinv=bool(design.used_pinv),
                 mask_hash=design.mask_hash(), snp_block=int(snp_block),

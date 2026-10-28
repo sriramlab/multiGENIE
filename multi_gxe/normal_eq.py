@@ -11,7 +11,7 @@ sub-model are exactly the corresponding principal submatrix of the full system.*
 Fitting a subset of environments is therefore a slice and a solve, not another pass
 over the genotypes: one fit on the cluster buys every subset.
 
-The engine (GENIE or the engine) writes that system once for the full sample and once per
+The engine (GENIE) writes that system once for the full sample and once per
 jackknife block, so delete-one standard errors survive the slicing too.
 See `docs/export_format.md` for the JSON schema.
 

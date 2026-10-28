@@ -1,4 +1,4 @@
-"""The fixed preprocessing every half shares, mirroring the engine's `pipeline.prepare()`.
+"""The fixed preprocessing every half shares, mirroring the engine's preprocessing.
 
     W  = [1, covariates, E]     non-constant columns centred      (prepare(), 126-171)
     Q  = (W'W)^{-1}             pinv when cond(W'W) >= 1e6          (prepare(), 183-228)
@@ -215,7 +215,7 @@ class Design:
     def from_files(cls, geno_prefix: str, pheno_path: str, covar_path: Optional[str],
                    env_path: str, atoms_path: str, *, pheno_col: Optional[str] = None,
                    trait: str = "", log=print) -> "Design":
-        """The analysed sample as the engine would build it (`io/data_prep.py`): rows of the
+        """The analysed sample as the engine would build it: rows of the
         .fam with an observed phenotype, a complete environment row and a covariate row
         (covariates mean-imputed per column), in .fam order -- plus an atom label."""
         import pandas as pd

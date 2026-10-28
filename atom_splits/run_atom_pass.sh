@@ -18,7 +18,6 @@
 #   -v TAG=.seed2,SEED_SHIFT=1   second replicate: output <trait>.atoms.G12.seed2.npz with a shifted probe seed
 #                                (pair with ATOMS=.../atoms_pool47.G12.seed2.tsv for a fresh atom partition)
 #   -v EXTRA="--no-keep-sketch"  lower memory (recomputes X'Cin in pass 2)
-#   -v BACKEND=engine              the C++ passes C++ passes (after build_engine_atoms.sh)
 #   -v ENVFILE=/abs/path.env,TAG=.pool84   another environment file (pool87 variant -> L=84 tensor)
 #
 # Cost: two passes of ~1.1e15 flops each at G = 12; ~4-6 h on 8 cores (AVX2), less on AVX-512.
@@ -43,8 +42,7 @@ TRAIT="${TRAITS[$idx]}"
 export OMP_NUM_THREADS=${NSLOTS:-8} OPENBLAS_NUM_THREADS=${NSLOTS:-8}
 mkdir -p "${SCRATCH}/log" "${TENSOR_DIR}/${TRAIT}"
 
-ARGS=(--trait "${TRAIT}" --atoms "${ATOMS}" --out "${TENSOR_DIR}" --threads "${NSLOTS:-8}" --backend "${BACKEND:-numpy}")
-if [[ "${BACKEND:-numpy}" == engine ]]; then conda activate engine; if ! grep -qw avx512f /proc/cpuinfo; then echo "[requeue] $(hostname) lacks avx512f; exit 99" >&2; exit 99; fi; fi
+ARGS=(--trait "${TRAIT}" --atoms "${ATOMS}" --out "${TENSOR_DIR}" --threads "${NSLOTS:-8}")
 TAG="${TAG:-}"
 if [[ "${ENVFILE:-}" == MANIFEST ]]; then ENVFILE=${ROOT}/data/pool87/$(awk -F"\t" -v t="${TRAIT}" 'NR>1 && $1==t {print $2}' ${ROOT}/data/pool87/manifest.tsv); fi   # per-trait pool87 variant
 if [[ -n "${ENVFILE:-}" ]]; then ARGS+=(--env "${ENVFILE}"); fi   # another environment file (ENV itself is clobbered by the Modules init)

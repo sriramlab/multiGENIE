@@ -1,6 +1,6 @@
-"""Genotype blocks exactly as the engine's BEDReader produces them.
+"""Genotype blocks exactly as the engine's BED reader produces them.
 
-Mirrors `the engine/csrc/genotype/bed_reader.cpp` (v0.10.27):
+Mirrors the engine's BED reader:
 
     orientation      00 -> 0, 01 -> missing, 10 -> 1, 11 -> 2   (A2 dosage; bed_reader count_A1=False)
     statistics       mean = sum / n_observed over the analysed rows, sd = sqrt(mean (1 - mean/2)),
@@ -58,7 +58,7 @@ def snp_stats(codes: np.ndarray):
     return af, mean, sd
 
 
-def engine_impute(codes: np.ndarray, snp_global: np.ndarray, sample_local: np.ndarray,
+def hwe_impute(codes: np.ndarray, snp_global: np.ndarray, sample_local: np.ndarray,
                 af: Optional[np.ndarray] = None) -> np.ndarray:
     """Replace MISSING entries in place with the engine's deterministic HWE draw."""
     miss = codes == MISSING
@@ -82,12 +82,12 @@ def engine_impute(codes: np.ndarray, snp_global: np.ndarray, sample_local: np.nd
 def standardize_block(codes: np.ndarray, snp_global: np.ndarray,
                       sample_local: Optional[np.ndarray] = None,
                       dtype=np.float32) -> np.ndarray:
-    """Standardised (n, m) block, the engine conventions.  `codes` is consumed (imputed in place)."""
+    """Standardised (n, m) block, the engine's conventions.  `codes` is consumed (imputed in place)."""
     n = codes.shape[0]
     if sample_local is None:
         sample_local = np.arange(n)
     af, mean, sd = snp_stats(codes)
-    engine_impute(codes, snp_global, sample_local, af)
+    hwe_impute(codes, snp_global, sample_local, af)
     X = codes.astype(dtype, order="K")
     X -= mean.astype(dtype)[None, :]
     X *= (1.0 / sd).astype(dtype)[None, :]

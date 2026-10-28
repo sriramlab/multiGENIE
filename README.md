@@ -116,7 +116,7 @@ paper. The earlier simulation-based test is kept in `multi_gxe.nulltest` for ref
 ## Requirements
 
 Python >= 3.9, numpy and scipy. The genotype passes of `atom_splits/` also need a PLINK reader
-(`bed_reader`, or the C++ backend in `atom_splits/engine_backend/`) and are meant for a compute node.
+(`bed_reader`) and are meant for a compute node.
 
 ## Citation
 

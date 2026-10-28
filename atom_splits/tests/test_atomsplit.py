@@ -73,8 +73,8 @@ def test_imputation_is_deterministic_and_hwe():
     codes = np.full((2000, 3), bedio.MISSING, dtype=np.int8)
     codes[:1000] = np.array([0, 1, 2], dtype=np.int8)[None, :] * 0 + np.array([[0, 1, 2]], dtype=np.int8)
     codes[:1000, 0] = 1                                    # p = 0.5 for SNP 0
-    a = bedio.engine_impute(codes.copy(), np.arange(3), np.arange(2000))
-    b = bedio.engine_impute(codes.copy(), np.arange(3), np.arange(2000))
+    a = bedio.hwe_impute(codes.copy(), np.arange(3), np.arange(2000))
+    b = bedio.hwe_impute(codes.copy(), np.arange(3), np.arange(2000))
     assert np.array_equal(a, b)
     freq = np.bincount(a[1000:, 0], minlength=3) / 1000
     assert abs(freq[1] - 0.5) < 0.06 and abs(freq[0] - 0.25) < 0.06

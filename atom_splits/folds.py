@@ -31,7 +31,7 @@ THREE REQUIREMENTS, ALL FROM THE SPEC
    here touches that.
 
 The assignment is deterministic given (analysed sample, kinship file, PC file,
-seed): re-running reproduces the same folds, which is what makes the two the engine runs
+seed): re-running reproduces the same folds, which is what makes the two half-sample runs
 of a replicate re-runnable.
 """
 from __future__ import annotations
@@ -345,7 +345,7 @@ def main() -> None:
     if rep["cross_fold_related_pairs"]:
         raise SystemExit("[ERR] related pairs straddle the folds; the split is invalid")
     # A greedy that falls into the one-fold attractor still writes a syntactically
-    # perfect TSV, and the the engine runs downstream take ~0.6 h each before anyone looks.
+    # perfect TSV, and the engine runs downstream take ~0.6 h each before anyone looks.
     # Fail here instead.
     skew = abs(rep["n_A"] - rep["n_B"]) / max(rep["n_A"] + rep["n_B"], 1)
     if skew > 0.02:

@@ -48,7 +48,7 @@ GENIE -g geno -p pheno -c cov -e envs.env -m G+GxE+NxE -k 10 -jn 100 -o out \
       --export-normal-eq out.normal_eq.json
 ```
 
-**the engine** needed no C++ change, because it already materialises both halves of the
+**The engine** needed no C++ change, because it already materialises both halves of the
 system: every leave-one-block-out trace matrix and the per-block right-hand side are
 already computed for its own jackknife. The export is assembled from those and is
 inert unless switched on by environment variable.
@@ -71,9 +71,9 @@ standard errors.
   `L = 20, J = 100` is about 40 MB; `L = 200` would be about 4 GB.
 * **Two engines, one schema.** The selector cannot tell them apart and does not try.
   What differs is upstream: GENIE hardcodes environment main effects into the
-  covariates, the engine exposes it as a parameter. See `docs/algorithm.md` section 8.
+  covariates, the newer engine exposes it as a parameter. See `docs/algorithm.md` section 8.
 * **`h2` normalisation is the reader's.** The selector recomputes `h2` from `sigma`
-  and the traces in the GENIE convention. the engine's printed `h2_*` uses a different
+  and the traces in the GENIE convention. The engine's printed `h2_*` uses a different
   normaliser, so the two differ by construction — this is not a disagreement about
   the fit.
 

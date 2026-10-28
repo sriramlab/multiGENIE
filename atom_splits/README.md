@@ -39,8 +39,7 @@ environment matrix and the phenotype scale are those of the full analysed sample
 | `atomsplit/tensor.py`, `assemble_export.py` | C | `AtomTensor.assemble(atoms) -> Export`; JSON in the engine's schema |
 | `atomsplit/pairs.py`, `run_pairs.py`, `run_pairs.sh` | D | every pair; each curve, jackknife and ordering saved to `<trait>.pairs.npz` |
 | `recut_pairs.py`, `run_heldout.py` | — | any rule re-applied to the saved curves; the held-out estimate of the reported set |
-| `atomsplit/dense.py`, `validate_v1.py`, `validate_v2.py`, `validate_backend.py`, `tests/` | V | exactness against dense kernels, against the engine, and the C++ backend |
-| `engine_backend/` | — | the two passes in C++, as a patch to the engine |
+| `atomsplit/dense.py`, `validate_v1.py`, `tests/` | V | exactness against dense kernels |
 
 ## Conventions mirrored from the engine
 
@@ -58,8 +57,8 @@ environment matrix and the phenotype scale are those of the full analysed sample
 PY=python                                       # an interpreter with numpy, scipy and bed_reader
 # A: the halves and the atoms (minutes; reads the kinship table and the genetic PCs once)
 $PY atom_splits/make_atoms.py --G 12 --seed 20260928 -o data/atoms.G12.tsv
-# B: two streaming passes per trait (hours on 8 cores; the C++ backend with --backend engine)
-qsub -t 1-<n traits> -v TRAITS_FILE=<list>,ATOMS=data/atoms.G12.tsv,BACKEND=engine atom_splits/run_atom_pass.sh
+# B: two streaming passes per trait (hours on 8 cores)
+qsub -t 1-<n traits> -v TRAITS_FILE=<list>,ATOMS=data/atoms.G12.tsv atom_splits/run_atom_pass.sh
 # D: every pair through the method; the tensor can be deleted afterwards (DELETE_TENSOR=1)
 qsub -t 1-<n traits> -v TRAITS_FILE=<list> atom_splits/run_pairs.sh
 # anything downstream reads <trait>.pairs.npz only: no refits
@@ -70,14 +69,6 @@ $PY atom_splits/run_heldout.py --trait bmi ...                         # the hel
 The job scripts carry the absolute paths of the machine the paper was run on; read them as a
 runbook and adapt the five paths at the top.
 
-## The C++ backend (`--backend engine`)
-
-`engine_backend/` adds `atom_pass1` / `atom_pass2` to the engine: its own BED reader (subset rows,
-SNP statistics, imputation hash, standardisation), Eigen GEMMs parallelised with OpenMP, and the
-projection and per-atom Grams written in place on the numpy buffers. Python keeps the orchestration.
-Build and check with `build_engine_atoms.sh` and `validate_backend.py`. Mailman is deliberately not
-used: at the thousands of right-hand columns an atom pass needs, its lookup table no longer fits in
-cache and its per-column cost is no better than dense sgemm.
 
 ## Cost (G = 12, L = 49, R = 10 probes, N ≈ 210k, M ≈ 454k)
 
@@ -91,6 +82,4 @@ be deleted once `pairs.npz` exists.
 
 `validate_v1.py` (runs anywhere, minutes): the assembler against explicit `N x N` kernels on
 simulated data, float64 exact to 4e-13, float32 pipeline to 3e-6, and the BED round trip exact.
-`validate_v2.py` (needs the engine): one half assembled from atoms against the engine's own export
-with the same probes, traces to 5e-8 and phenotype terms to 1e-6. `tests/` runs the assembler,
-the atom partition and the pair enumeration in a few seconds.
+`tests/` runs the assembler, the atom partition and the pair enumeration in a few seconds.

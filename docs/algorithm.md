@@ -17,7 +17,7 @@ environment main effects, are projected out of `y` and of every kernel. The `P =
 variance components are estimated by the method of moments: `T s2 = q` with
 `T[p,p'] = tr(K_p K_p')` and `q[p] = y' K_p y` (eq. normal), the traces by a randomized
 (Hutchinson) estimator with `R` probes, and delete-one systems over `J` contiguous genome blocks
-for the jackknife. This fit is done by the engine (the engine/GENIE) and exported once per half
+for the jackknife. This fit is done by the engine (GENIE) and exported once per half
 (`docs/export_format.md`); the package never touches genotypes.
 
 ## 2. The identity: every sub-model is a slice of one export

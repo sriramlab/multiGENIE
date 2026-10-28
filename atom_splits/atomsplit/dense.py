@@ -9,7 +9,7 @@ atom assembler is supposed to reproduce for a sub-sample mask h:
 
 `exact_traces` gives tr(A_r A_s) without probes.  `engine_half_system` is the engine's OWN
 convention for a half (W, SNP statistics and y~ recomputed on the half's rows) -- what a
-standalone the engine run on that half computes, up to its fresh probes -- for validation V3.
+standalone engine run on that half computes, up to its fresh probes -- for validation V3.
 """
 from __future__ import annotations
 
@@ -23,7 +23,7 @@ from .stream import jk_bounds
 
 
 def standardized_matrix(codes: np.ndarray, snp_global: Optional[np.ndarray] = None) -> np.ndarray:
-    """(N, M) float64 standardised genotypes, the engine imputation and statistics."""
+    """(N, M) float64 standardised genotypes, the engine's imputation and statistics."""
     codes = np.array(codes, dtype=np.int8)
     N, M = codes.shape
     if snp_global is None:

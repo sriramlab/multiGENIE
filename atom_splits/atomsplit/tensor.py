@@ -26,7 +26,7 @@ Assembling half h (a set of atoms, mask m):
     q_h[s]        = sum_{g,g' in h} qdiag[s,g,g']                          (diagonal kernels, every j)
     Fix 2         T[noise,noise] = T[noise,G] = T[G,noise] = NC_h = sum_{g in h} NC_g
 
-which is line for line `the engine/csrc/se/loo_traces.cpp` and `io/normal_eq_export.py` with the
+which is line for line the engine's leave-one-block traces and export with the
 half's restricted kernels in place of the full ones.
 """
 from __future__ import annotations
