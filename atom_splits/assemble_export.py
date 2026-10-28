@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Stage C on the command line: write the normal_eq.json of one union of atoms, in the
-engine's schema, so any existing multi_gxe script can read it.
+GENIE's schema, so any existing multi_gxe script can read it.
 
     python assemble_export.py --tensor bmi.atoms.G12.npz --atoms 0,1,2,3,4,5 -o bmi.atomsA.normal_eq.json
 """

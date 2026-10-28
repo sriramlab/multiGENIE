@@ -2,7 +2,7 @@
 cap on the login nodes refuses for the 33 GB array .bed), same interface and codes as bedio.BedBlockReader.
 
 bedio.BedBlockReader needs the `bed_reader` package, which none of the cluster environments carry; this reader
-decodes the SNP-major .bed directly with the engine's orientation (bedio module docstring):
+decodes the SNP-major .bed directly with GENIE's orientation (bedio module docstring):
     2-bit 00 -> 0, 01 -> MISSING, 10 -> 1, 11 -> 2   (A2 dosage),  samples packed low bits first.
 """
 from __future__ import annotations

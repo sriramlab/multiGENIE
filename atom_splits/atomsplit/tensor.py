@@ -26,7 +26,7 @@ Assembling half h (a set of atoms, mask m):
     q_h[s]        = sum_{g,g' in h} qdiag[s,g,g']                          (diagonal kernels, every j)
     Fix 2         T[noise,noise] = T[noise,G] = T[G,noise] = NC_h = sum_{g in h} NC_g
 
-which is line for line the engine's leave-one-block traces and export with the
+which is line for line GENIE's leave-one-block traces and export with the
 half's restricted kernels in place of the full ones.
 """
 from __future__ import annotations
@@ -162,7 +162,7 @@ class AtomTensor:
                          jackknife=[mg.System(x_l=Tj[j], y_r=qj[j]) for j in range(self.J)])
 
     def export_json(self, atoms: Sequence[int], path: str | Path) -> str:
-        """Write the union's system in the engine's normal_eq.json schema."""
+        """Write the union's system in GENIE's normal_eq.json schema."""
         T, q, Tj, qj = self.systems(atoms)
         payload = {
             "schema_version": 1, "model": "G+GxE+NxE", "gen_nbin": 1, "n_env": self.L,

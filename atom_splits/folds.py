@@ -47,7 +47,7 @@ import os
 
 HERE = Path(__file__).resolve().parent
 ROOT = Path(os.environ.get("MULTI_GXE_ROOT", Path.cwd()))   # analysis root: data/, results/
-MISSING, MISSING_TOL = -9.0, 1e-6                            # the engine's missing code
+MISSING, MISSING_TOL = -9.0, 1e-6                            # GENIE's missing code
 
 GENO = "/u/project/sriram/ukbiobank/data/geno/cal/filter4_no_mhc/filter4_no_mhc"
 # The KING kin0 shards, which ARE in the .fam's ID space.  The other relatedness
@@ -88,7 +88,7 @@ class DSU:
 
 # ---------------------------------------------------------------------- inputs
 def analysed_sample(env_path, geno_prefix=GENO):
-    """The rows the engine would analyse: listwise-complete in the .env, present in the
+    """The rows GENIE would analyse: listwise-complete in the .env, present in the
     .fam.  Returned in FAM order, which is the order every input file uses."""
     import pandas as pd
     df = pd.read_csv(env_path, sep=r"\s+", dtype={0: str, 1: str})
@@ -345,7 +345,7 @@ def main() -> None:
     if rep["cross_fold_related_pairs"]:
         raise SystemExit("[ERR] related pairs straddle the folds; the split is invalid")
     # A greedy that falls into the one-fold attractor still writes a syntactically
-    # perfect TSV, and the engine runs downstream take ~0.6 h each before anyone looks.
+    # perfect TSV, and the GENIE runs downstream take ~0.6 h each before anyone looks.
     # Fail here instead.
     skew = abs(rep["n_A"] - rep["n_B"]) / max(rep["n_A"] + rep["n_B"], 1)
     if skew > 0.02:

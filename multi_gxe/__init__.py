@@ -2,13 +2,13 @@
 
     import multi_gxe as mg
 
-    A = mg.load_export("trait.foldA.normal_eq.json")      # one engine fit per half
+    A = mg.load_export("trait.foldA.normal_eq.json")      # one GENIE fit per half
     B = mg.load_export("trait.foldB.normal_eq.json")
     r = mg.complementary_split([(A, B)])                  # the method, no arguments
 
-Four stages, all but the first paid for by one engine fit per half:
+Four stages, all but the first paid for by one GENIE fit per half:
 
-    1  fit        all L environments jointly, once per half      (the engine; docs/export_format.md)
+    1  fit        all L environments jointly, once per half      (GENIE; docs/export_format.md)
     2  grow       forward selection on the gain in tau(S),
                   full depth, on one half                         grow.py
     3  score      the ordering on the other half -> a held-out

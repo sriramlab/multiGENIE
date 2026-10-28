@@ -1,4 +1,4 @@
-# The export: what the engine writes, what the selector reads
+# The export: what GENIE writes, what the selector reads
 
 One JSON file per fit. It carries the method-of-moments normal equations for the full
 sample and for every jackknife block, and nothing else — no genotypes, no phenotypes,
@@ -48,19 +48,18 @@ GENIE -g geno -p pheno -c cov -e envs.env -m G+GxE+NxE -k 10 -jn 100 -o out \
       --export-normal-eq out.normal_eq.json
 ```
 
-**The engine** needed no C++ change, because it already materialises both halves of the
-system: every leave-one-block-out trace matrix and the per-block right-hand side are
-already computed for its own jackknife. The export is assembled from those and is
-inert unless switched on by environment variable.
+The export is assembled from quantities GENIE already materialises for its own jackknife,
+every leave-one-block-out trace matrix and the per-block right-hand side, and is inert unless
+switched on.
 
-Either way the file is validated the same way it was when the exporter was written:
-solving the exported full system must reproduce the engine's own `sigma` to printed
+The file is validated the same way it was when the exporter was written:
+solving the exported full system must reproduce GENIE's own `sigma` to printed
 precision, and delete-one solves of the exported blocks must reproduce its jackknife
 standard errors.
 
 ## Things that bite
 
-* **The sample is baked in.** The engine drops individuals missing any environment
+* **The sample is baked in.** GENIE drops individuals missing any environment
   column before it builds the system, so the export is a complete-case fit over all
   `L` columns. Adding one badly-missing environment to the pool shrinks `N` for every
   subset, including those that exclude it.
@@ -69,13 +68,10 @@ standard errors.
   a correction to the `L` fit.
 * **Size.** `(J + 1) x D²` doubles at full precision, read into memory whole.
   `L = 20, J = 100` is about 40 MB; `L = 200` would be about 4 GB.
-* **Two engines, one schema.** The selector cannot tell them apart and does not try.
-  What differs is upstream: GENIE hardcodes environment main effects into the
-  covariates, the newer engine exposes it as a parameter. See `docs/algorithm.md` section 8.
+* **Environment main effects.** GENIE includes the environment main effects among the
+  covariates. See `docs/algorithm.md` section 8.
 * **`h2` normalisation is the reader's.** The selector recomputes `h2` from `sigma`
-  and the traces in the GENIE convention. The engine's printed `h2_*` uses a different
-  normaliser, so the two differ by construction — this is not a disagreement about
-  the fit.
+  and the traces in the GENIE convention rather than reading GENIE's printed `h2_*` lines.
 
 ## A file to test against
 

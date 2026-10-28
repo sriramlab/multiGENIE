@@ -1,6 +1,6 @@
-"""Genotype blocks exactly as the engine's BED reader produces them.
+"""Genotype blocks exactly as GENIE's BED reader produces them.
 
-Mirrors the engine's BED reader:
+Mirrors GENIE's BED reader:
 
     orientation      00 -> 0, 01 -> missing, 10 -> 1, 11 -> 2   (A2 dosage; bed_reader count_A1=False)
     statistics       mean = sum / n_observed over the analysed rows, sd = sqrt(mean (1 - mean/2)),
@@ -23,7 +23,7 @@ import numpy as np
 MISSING = -127          # bed_reader's int8 missing code
 
 
-# ------------------------------------------------------------------ the engine's hash
+# ------------------------------------------------------------------ GENIE's hash
 def hash_index(idx) -> np.ndarray:
     """uint32 hash of an integer index, `genotype_reader.h:28-34`."""
     x = np.asarray(idx, dtype=np.int64).astype(np.uint32)      # static_cast<uint32_t>
@@ -60,7 +60,7 @@ def snp_stats(codes: np.ndarray):
 
 def hwe_impute(codes: np.ndarray, snp_global: np.ndarray, sample_local: np.ndarray,
                 af: Optional[np.ndarray] = None) -> np.ndarray:
-    """Replace MISSING entries in place with the engine's deterministic HWE draw."""
+    """Replace MISSING entries in place with GENIE's deterministic HWE draw."""
     miss = codes == MISSING
     if not miss.any():
         return codes
@@ -82,7 +82,7 @@ def hwe_impute(codes: np.ndarray, snp_global: np.ndarray, sample_local: np.ndarr
 def standardize_block(codes: np.ndarray, snp_global: np.ndarray,
                       sample_local: Optional[np.ndarray] = None,
                       dtype=np.float32) -> np.ndarray:
-    """Standardised (n, m) block, the engine's conventions.  `codes` is consumed (imputed in place)."""
+    """Standardised (n, m) block, GENIE's conventions.  `codes` is consumed (imputed in place)."""
     n = codes.shape[0]
     if sample_local is None:
         sample_local = np.arange(n)
@@ -102,7 +102,7 @@ class BedBlockReader:
         from bed_reader import open_bed
         prefix = str(prefix)
         self.path = prefix if prefix.endswith(".bed") else prefix + ".bed"
-        # count_A1=False: value = A2 dosage, i.e. 11 -> 2, which is the engine's orientation
+        # count_A1=False: value = A2 dosage, i.e. 11 -> 2, which is GENIE's orientation
         self.bed = open_bed(self.path, count_A1=False)
         self.rows = np.asarray(fam_index, dtype=np.int64)
         if np.any(np.diff(self.rows) <= 0):

@@ -6,7 +6,7 @@ h2_GxE, and estimation noise with a chosen standard error.  Everything downstrea
 clustering, the greedy grow, every stopping rule, the cross-fitted estimator -- runs
 on it unchanged, because it only ever sees the system.
 
-WHAT IT IS NOT.  There are no SNPs, no individuals and no engine fit here.  The
+WHAT IT IS NOT.  There are no SNPs, no individuals and no GENIE fit here.  The
 estimation error is DRAWN, not earned, and h2_GxE is imposed component by component,
 so correlated environments do not split a shared signal the way they do in a real
 joint fit.  Use it for mechanics, for tests and for teaching the interface.  Any

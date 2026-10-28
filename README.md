@@ -9,7 +9,8 @@ The Python package is imported as `multi_gxe`.
 
 ## The idea
 
-1. **One joint model.** All environments are fitted together in a linear mixed model with a GxE
+1. **One joint model.** All environments are fitted together, with GENIE
+   (github.com/sriramlab/GENIE), in a linear mixed model with a GxE
    and a noise-by-environment (NxE) variance component per environment, so that
    environment-dependent noise is not mistaken for GxE. From one fit, the GxE heritability of
    *any* subset of environments is a small linear solve, not a new pass over the genotypes.
@@ -57,7 +58,7 @@ reported set (selection frequency in the top k_g, ties by mean position): [0, 5]
 ### Your own trait
 
 The input is one exported system of normal equations per half of the sample, written by the
-variance-components engine (format in `docs/export_format.md`).
+variance-components engine, GENIE (format in `docs/export_format.md`).
 
 ```python
 import multi_gxe as mg

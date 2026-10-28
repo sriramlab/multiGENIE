@@ -3,7 +3,7 @@ aggregate over pairs.
 
 Per pair (A, B) and direction: `multi_gxe.crossfit.direction` unchanged (full-depth greedy
 on the growth half, held-out curve on the other, the tail-test cut) -- the same call
-`stability_selection/robustness_pool47.py` makes on engine exports.  Tier-0/1 cells are
+`stability_selection/robustness_pool47.py` makes on GENIE exports.  Tier-0/1 cells are
 sliced out and degenerate NxE columns dropped exactly as `load_pair` does there.
 
 Aggregation (plan, Stage D.4):
@@ -241,7 +241,7 @@ def leave_one_atom_out(tensor: AtomTensor, blocks0, names0, drop) -> Dict[str, A
 
 
 def paper_pair(paper_dir: str, trait: str, blocks0, names0, drop, gamma: float = GAMMA) -> Optional[Dict]:
-    """The paper's two engine exports through the same rule (V4 reference)."""
+    """The paper's two GENIE exports through the same rule (V4 reference)."""
     mg = _mg()
     from multi_gxe.stopping import tail_test
     fa = Path(paper_dir) / trait / f"{trait}.foldA.normal_eq.json"

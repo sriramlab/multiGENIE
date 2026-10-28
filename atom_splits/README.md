@@ -25,27 +25,27 @@ by summation; the phenotype terms split the same way, and the delete-one-genome-
 only each block's contribution against the totals, formed in the second pass. Downstream every half
 is an ordinary `multi_gxe.Export`, so the method runs unchanged.
 
-What differs from a half-sample engine run, by design: the projection `W`, the SNP statistics, the
+What differs from a half-sample GENIE run, by design: the projection `W`, the SNP statistics, the
 environment matrix and the phenotype scale are those of the full analysed sample, not of the half.
 
 ## Layout
 
 | file | stage | what |
 |---|---|---|
-| `atomsplit/model.py` | — | `Design`: the preprocessing (W, Q, V, y~) mirroring the engine; kernel layout |
-| `atomsplit/bedio.py` | — | BED blocks decoded, standardised and imputed exactly as the engine does |
+| `atomsplit/model.py` | — | `Design`: the preprocessing (W, Q, V, y~) mirroring GENIE; kernel layout |
+| `atomsplit/bedio.py` | — | BED blocks decoded, standardised and imputed exactly as GENIE does |
 | `atomsplit/atoms.py`, `make_atoms.py`, `folds.py` | A | the two halves, and `G` atoms refining them |
 | `atomsplit/stream.py`, `run_atom_pass.py`, `run_atom_pass.sh` | B | the two passes → `<trait>.atoms.G12.npz` |
-| `atomsplit/tensor.py`, `assemble_export.py` | C | `AtomTensor.assemble(atoms) -> Export`; JSON in the engine's schema |
+| `atomsplit/tensor.py`, `assemble_export.py` | C | `AtomTensor.assemble(atoms) -> Export`; JSON in GENIE's schema |
 | `atomsplit/pairs.py`, `run_pairs.py`, `run_pairs.sh` | D | every pair; each curve, jackknife and ordering saved to `<trait>.pairs.npz` |
 | `recut_pairs.py`, `run_heldout.py` | — | any rule re-applied to the saved curves; the held-out estimate of the reported set |
 | `atomsplit/dense.py`, `validate_v1.py`, `tests/` | V | exactness against dense kernels |
 
-## Conventions mirrored from the engine
+## Conventions mirrored from GENIE
 
 * kernels `V K_r V` with `V = I - W(W'W)^{-1}W'`, `W = [1, covariates, E]`; `V` is the trait's
   full-sample projector and a half's kernel is `D_h V K_r V D_h`;
-* SNP standardisation `sd = sqrt(2p(1-p))`, monomorphic sd 1, the engine's HWE imputation hash;
+* SNP standardisation `sd = sqrt(2p(1-p))`, monomorphic sd 1, GENIE's HWE imputation hash;
 * Hutchinson traces `T = (1/B) sum_p (K_r z_p)'(K_s z_p)` with Gaussian probes
   `default_rng(seed).standard_normal((N, B), float32)`;
 * the noise row and column of `T` carry `NC_h = sum_{n in h} (1 - h_nn)`;
@@ -73,7 +73,7 @@ runbook and adapt the five paths at the top.
 ## Cost (G = 12, L = 49, R = 10 probes, N ≈ 210k, M ≈ 454k)
 
 One trait: about 2.5 h on 8 AVX-512 cores for the two passes, against 34 min for a single
-half-sample engine fit, so 462 pairs cost what 4 or 5 separate fits would, instead of 924. Pass 1
+half-sample GENIE fit, so 462 pairs cost what 4 or 5 separate fits would, instead of 924. Pass 1
 holds about 5 GB for the input sketches, 5 GB for the projected sketches and 11 GB for the kept
 sketch store (`--no-keep-sketch` drops it); the tensor is about 16 GB per trait at `L = 49` and can
 be deleted once `pairs.npz` exists.

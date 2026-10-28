@@ -28,7 +28,7 @@ from .tensor import AtomTensor
 
 
 def jk_bounds(M: int, J: int) -> np.ndarray:
-    """The engine's block scheme: bounds[j] = j * M // J."""
+    """GENIE's block scheme: bounds[j] = j * M // J."""
     return np.array([(j * M) // J for j in range(J + 1)], dtype=np.int64)
 
 

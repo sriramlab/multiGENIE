@@ -1,4 +1,4 @@
-"""The fixed preprocessing every half shares, mirroring the engine's preprocessing.
+"""The fixed preprocessing every half shares, mirroring GENIE's preprocessing.
 
     W  = [1, covariates, E]     non-constant columns centred      (prepare(), 126-171)
     Q  = (W'W)^{-1}             pinv when cond(W'W) >= 1e6          (prepare(), 183-228)
@@ -16,7 +16,7 @@ Kernel layout (the export's order, `methods/gxe.py` + `io/normal_eq_export.py`):
 "diagonal kernels" (they do not).  For the atom construction every kernel is fitted as
 V K V restricted to the half: D_h V K V D_h.
 
-The one deliberate departure from a half-sample engine run: W, the SNP statistics, E and
+The one deliberate departure from a half-sample GENIE run: W, the SNP statistics, E and
 the scaling of y are those of the trait's FULL analysed sample, not of the half
 (plan, "Hard constraint"; validation V3 measures the effect).
 """
@@ -54,7 +54,7 @@ def _is_missing_str(v: str) -> bool:
 class Design:
     """Analysed rows (in .fam order) with everything the atom pass needs."""
     y: np.ndarray                    # (N,) raw phenotype
-    E: np.ndarray                    # (N, L) environment as given to the engine
+    E: np.ndarray                    # (N, L) environment as given to GENIE
     C: np.ndarray                    # (N, c) covariates WITHOUT the intercept
     atom: np.ndarray                 # (N,) int in 0..G-1
     G: int
@@ -180,7 +180,7 @@ class Design:
 
     # --------------------------------------------------------------- probes
     def probes(self, seed: int, n_probes: int) -> np.ndarray:
-        """the engine's draw: default_rng(seed).standard_normal((N, B), dtype=float32)."""
+        """GENIE's draw: default_rng(seed).standard_normal((N, B), dtype=float32)."""
         rng = np.random.default_rng(int(seed))
         return rng.standard_normal((self.N, int(n_probes)), dtype=np.float32)
 
@@ -202,7 +202,7 @@ class Design:
 
     def restricted(self, rows: np.ndarray, G: Optional[int] = None,
                    atom: Optional[np.ndarray] = None) -> "Design":
-        """A Design over a subset of rows with ITS OWN W, Q, y~ -- the engine's half-sample
+        """A Design over a subset of rows with ITS OWN W, Q, y~ -- GENIE's half-sample
         convention, for validation V3."""
         rows = np.asarray(rows)
         return Design(y=self.y[rows], E=self.E[rows], C=self.C[rows],
@@ -215,7 +215,7 @@ class Design:
     def from_files(cls, geno_prefix: str, pheno_path: str, covar_path: Optional[str],
                    env_path: str, atoms_path: str, *, pheno_col: Optional[str] = None,
                    trait: str = "", log=print) -> "Design":
-        """The analysed sample as the engine would build it: rows of the
+        """The analysed sample as GENIE would build it: rows of the
         .fam with an observed phenotype, a complete environment row and a covariate row
         (covariates mean-imputed per column), in .fam order -- plus an atom label."""
         import pandas as pd
@@ -239,7 +239,7 @@ class Design:
             cv_ids = cv.iloc[:, 1].to_numpy(str)
             C_all = np.array(cv.iloc[:, 2:].apply(pd.to_numeric, errors="coerce").to_numpy(float), copy=True)
             C_all[np.abs(C_all - NA) < NA_TOL] = np.nan
-            for j in range(C_all.shape[1]):          # the engine: mean-impute per column
+            for j in range(C_all.shape[1]):          # GENIE: mean-impute per column
                 m = np.isnan(C_all[:, j])
                 if m.any():
                     C_all[m, j] = np.nanmean(C_all[:, j])

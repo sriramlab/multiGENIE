@@ -6,7 +6,7 @@ blocks, and `path[:k]` is a nested sequence of sub-models.
 
 **The grow is exhaustive so that the cut is free.**  One traversal scores every
 stopping rule, at any threshold, forever.  That is what makes rule design cheap
-enough to do honestly: the expensive object is the engine fit, the traversal is a
+enough to do honestly: the expensive object is the GENIE fit, the traversal is a
 few hundred solves of a small system, and comparing twenty stopping rules over it
 costs microseconds.
 

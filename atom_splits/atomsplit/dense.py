@@ -7,9 +7,9 @@ atom assembler is supposed to reproduce for a sub-sample mask h:
     delete-one j: K_r built from the SNPs outside block j, normalised by 1/(M - M_j)
     Fix 2: T[noise,noise] = T[noise,G] = NC_h = sum_{n in h} (1 - h_nn)
 
-`exact_traces` gives tr(A_r A_s) without probes.  `engine_half_system` is the engine's OWN
+`exact_traces` gives tr(A_r A_s) without probes.  `genie_half_system` is GENIE's OWN
 convention for a half (W, SNP statistics and y~ recomputed on the half's rows) -- what a
-standalone engine run on that half computes, up to its fresh probes -- for validation V3.
+standalone GENIE run on that half computes, up to its fresh probes -- for validation V3.
 """
 from __future__ import annotations
 
@@ -23,7 +23,7 @@ from .stream import jk_bounds
 
 
 def standardized_matrix(codes: np.ndarray, snp_global: Optional[np.ndarray] = None) -> np.ndarray:
-    """(N, M) float64 standardised genotypes, the engine's imputation and statistics."""
+    """(N, M) float64 standardised genotypes, GENIE's imputation and statistics."""
     codes = np.array(codes, dtype=np.int8)
     N, M = codes.shape
     if snp_global is None:
@@ -113,9 +113,9 @@ def exact_traces(design: Design, X: np.ndarray, mask: np.ndarray, fix_noise: boo
     return T
 
 
-def engine_half_system(design: Design, codes: np.ndarray, rows: np.ndarray, Z_half: np.ndarray,
+def genie_half_system(design: Design, codes: np.ndarray, rows: np.ndarray, Z_half: np.ndarray,
                        n_jk: int):
-    """The engine's own half-sample convention: build W, Q, y~ and the SNP statistics on
+    """GENIE's own half-sample convention: build W, Q, y~ and the SNP statistics on
     `rows` only, then the full-sample system of that restricted design (mask = all)."""
     rows = np.asarray(rows)
     sub = design.restricted(rows, G=1, atom=np.zeros(len(rows), dtype=int))

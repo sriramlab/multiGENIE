@@ -1,5 +1,5 @@
 """Simulated data for V1 / V2: genotypes with missingness, continuous and binary
-environments, covariates, a G + GxE + NxE phenotype, and every file the engine needs."""
+environments, covariates, a G + GxE + NxE phenotype, and every file GENIE needs."""
 from __future__ import annotations
 
 from pathlib import Path
@@ -54,7 +54,7 @@ def design_from_toy(t: Dict, trait: str = "toy") -> Design:
 def write_toy(t: Dict, outdir: str | Path, prefix: str = "toy",
               half_atoms: Optional[np.ndarray] = None) -> Dict[str, str]:
     """Write .bed/.bim/.fam, .pheno, .covar, .env, .atoms.tsv and (optionally) the two
-    -9-masked half .env files the engine needs for a half-sample run."""
+    -9-masked half .env files GENIE needs for a half-sample run."""
     out = Path(outdir)
     out.mkdir(parents=True, exist_ok=True)
     p = out / prefix

@@ -11,7 +11,7 @@ sub-model are exactly the corresponding principal submatrix of the full system.*
 Fitting a subset of environments is therefore a slice and a solve, not another pass
 over the genotypes: one fit on the cluster buys every subset.
 
-The engine (GENIE) writes that system once for the full sample and once per
+GENIE writes that system once for the full sample and once per
 jackknife block, so delete-one standard errors survive the slicing too.
 See `docs/export_format.md` for the JSON schema.
 
@@ -52,7 +52,7 @@ class Export:
     full: System
     jackknife: List[System]
     # Which environments still carry an N x E column.  `None` means all of them,
-    # which is every export as the engine writes it.  `drop_degenerate_nxe` sets it when
+    # which is every export as GENIE writes it.  `drop_degenerate_nxe` sets it when
     # a column has been removed for being collinear with the noise kernel, and the
     # G x E side is deliberately left untouched, so the two sides can differ.
     nxe_keep: tuple | None = None
@@ -96,7 +96,7 @@ def load_export(source: str | Path | Dict[str, Any],
 
     `drop` removes named environments by slicing their rows and columns out of
     every system.  That is the L - d fit itself, not a correction applied to the
-    L fit, so a column can leave the pool without re-running the engine.
+    L fit, so a column can leave the pool without re-running GENIE.
     """
     payload = (source if isinstance(source, dict)
                else json.loads(Path(source).read_text()))
@@ -186,8 +186,7 @@ def component_h2(sigma: np.ndarray, system: System) -> np.ndarray:
 
     The noise term is scaled by `N` and enters the denominator only, so the
     returned vector covers the non-noise components and sums to the model's total
-    heritability.  This is GENIE's convention; the engine prints a different
-    normaliser, so its `h2_*` lines and these numbers differ by construction.
+    heritability, in GENIE's convention.
     """
     sigma = np.asarray(sigma, dtype=float)
     n = sigma.size - 1

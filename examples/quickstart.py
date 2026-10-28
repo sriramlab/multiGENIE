@@ -4,7 +4,7 @@
     python examples/quickstart.py
 
 `multi_gxe.simulate` draws two half-sample normal-equation exports around one truth (the real schema,
-so the same code runs on engine exports).  `mg.complementary_split` with no arguments is the method: forward selection on the gain in the GxE heritability tau(S) on one half, the ordering
+so the same code runs on GENIE exports).  `mg.complementary_split` with no arguments is the method: forward selection on the gain in the GxE heritability tau(S) on one half, the ordering
 scored on the other half, both directions averaged, the cut k_g by the sequential tail tests at
 gamma = 0.05, and the reported environments the k_g with the highest selection frequency across the
 orderings.  Whether a trait has GxE at all is decided on the FULL sample: the marginal GxE test of every
@@ -28,7 +28,7 @@ def main() -> None:
     # trace_base = 0.25: genomic kernels share the genome, so tr(K_i K_j) ~ tr(K_i) even for unrelated environments; the toy
     # needs this for its one-environment (marginal) fits to behave like real ones (see simulate._psd_from_corr)
     A, B = mg.simulate.simulate_fold_pair(corr, h2, se=0.003, seed=20, trace_base=0.25)      # two independent halves, one truth
-    full = mg.simulate.simulate_export(corr, h2, se=0.002, seed=21, trace_base=0.25)         # the full-sample system (in a study: the engine's export on everyone)
+    full = mg.simulate.simulate_export(corr, h2, se=0.002, seed=21, trace_base=0.25)         # the full-sample system (in a study: GENIE's export on everyone)
     print(f"L = {L} environments; truth: h2_GxE = 0.03 on env_0 and env_5, 0 elsewhere (total {h2.sum():.2f})\n")
 
     # ---- the trait-level test, on the full sample ----

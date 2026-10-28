@@ -6,10 +6,10 @@ delete-one-SNP-block jackknife replicates, are then assembled from small Gram te
 computed in two passes over the genotypes (`stream.atom_pass`), and handed to the
 existing `multi_gxe` selection code as ordinary `Export` objects (`tensor.AtomTensor.
 assemble`).  See `thoughts/sep_28/atom_splits_plan.md` for the derivation and the
-Step 0 engine facts every convention here mirrors.
+Step 0 GENIE facts every convention here mirrors.
 
     model.Design        the fixed (full-sample) preprocessing: W, V, y~, atoms, kernels
-    bedio               the engine's BED decoding, standardisation and HWE imputation hash
+    bedio               GENIE's BED decoding, standardisation and HWE imputation hash
     stream.atom_pass    Stage B: the two genotype passes -> AtomTensor
     tensor.AtomTensor   Stage C: assemble(atoms) -> multi_gxe Export
     dense               the N x N reference implementation (validation V1)

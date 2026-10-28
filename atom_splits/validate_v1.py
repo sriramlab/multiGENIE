@@ -8,7 +8,7 @@ G+GxE+NxE phenotype; builds the atom tensor with the streaming code (float64 AND
 in-memory reader AND a written .bed through bed_reader); and for several unions of atoms
 compares T, q and every delete-one-block system with `dense.fixed_projector_system`
 computed from explicit kernels and the SAME probes.  Also reports the Hutchinson error
-against exact traces and the toy-data magnitude of V3 (engine's within-half convention).
+against exact traces and the toy-data magnitude of V3 (GENIE's within-half convention).
 
 Pass criteria: float64 max relative difference < 1e-8 on T, q, T_j, q_j; float32 < 1e-3.
 """
@@ -124,10 +124,10 @@ def main():
         if rr.max() > 0.5:
             ok = False
 
-    print("\n== V3 on toy data: engine's within-half convention vs fixed projector (fold A) ==")
+    print("\n== V3 on toy data: GENIE's within-half convention vs fixed projector (fold A) ==")
     rows = np.flatnonzero(np.isin(design.atom, range(a.G // 2)))
     Zh = Z[rows]
-    Th, qh, Tjh, qjh = dense.engine_half_system(design, t["codes"], rows, Zh, a.J)
+    Th, qh, Tjh, qjh = dense.genie_half_system(design, t["codes"], rows, Zh, a.J)
     Ta, qa, Tja, qja = tensor64.systems(tuple(range(a.G // 2)))
     print(f"  T rel diff {rel(Ta, Th):.2e}   q rel diff {rel(qa, qh):.2e}   (same probes restricted; differences = "
           "within-half W, SNP stats and y scaling)")
@@ -139,7 +139,7 @@ def main():
                         full=mg.System(Th, qh), jackknife=[mg.System(Tjh[j], qjh[j]) for j in range(a.J)])
         ja, jh = mg.Evaluator(exA).joint(), mg.Evaluator(exH).joint()
         print(f"  unselected sum h2_GxE on fold A: atom {ja['cum_h2']:.5f} +- {ja['cum_se']:.5f}   "
-              f"engine-convention {jh['cum_h2']:.5f} +- {jh['cum_se']:.5f}   "
+              f"GENIE-convention {jh['cum_h2']:.5f} +- {jh['cum_se']:.5f}   "
               f"diff / SE = {(ja['cum_h2'] - jh['cum_h2']) / max(jh['cum_se'], 1e-12):.2f}")
     except Exception as e:                                  # multi_gxe not importable here
         print(f"  (multi_gxe comparison skipped: {e})")
